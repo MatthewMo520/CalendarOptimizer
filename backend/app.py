@@ -24,15 +24,18 @@ def initialize_calendar():
 
 def event_to_dict(event):
     return {
-        'id': id(event),  # Use object id as unique identifier
+        'id': str(id(event)),  # Use object id as unique identifier
         'title': event.title,
         'duration': event.duration,
         'priority': event.priority.value,
-        'scheduled_time': event.scheduled_time.isoformat() if event.scheduled_time else None,
-        'earliest_start': event.earliest_start.isoformat() if event.earliest_start else None,
-        'latest_start': event.latest_start.isoformat() if event.latest_start else None,
-        'fixed_time': event.fixed_time.isoformat() if event.fixed_time else None,
-        'is_scheduled': event.is_scheduled
+        'type': getattr(event, 'type', 'flexible'),  # Default to flexible if not set
+        'scheduledTime': event.scheduled_time.isoformat() if event.scheduled_time else None,
+        'earliestStart': event.earliest_start.isoformat() if event.earliest_start else None,
+        'latestStart': event.latest_start.isoformat() if event.latest_start else None,
+        'fixedTime': event.fixed_time.isoformat() if event.fixed_time else None,
+        'isScheduled': event.is_scheduled,
+        'description': getattr(event, 'description', None),
+        'location': getattr(event, 'location', None)
     }
 
 @app.route('/events', methods=['GET'])
@@ -57,31 +60,42 @@ def add_event():
         priority_value = data.get('priority', 2)
         priority = Priority(priority_value)
         
+        # Extract additional fields
+        event_type = data.get('type', 'flexible')
+        description = data.get('description', None)
+        location = data.get('location', None)
+        
         # Create event based on whether it's fixed time or flexible
-        if 'fixed_time' in data and data['fixed_time']:
-            fixed_time = datetime.fromisoformat(data['fixed_time'].replace('T', ' '))
+        if 'fixedTime' in data and data['fixedTime']:
+            fixed_time = datetime.fromisoformat(data['fixedTime'].replace('T', ' '))
             event = Event(
                 title=data['title'],
                 duration=data['duration'],
                 priority=priority,
-                fixed_time=fixed_time
+                fixed_time=fixed_time,
+                event_type=event_type,
+                description=description,
+                location=location
             )
         else:
             earliest_start = None
             latest_start = None
             
-            if 'earliest_start' in data and data['earliest_start']:
-                earliest_start = datetime.fromisoformat(data['earliest_start'].replace('T', ' '))
+            if 'earliestStart' in data and data['earliestStart']:
+                earliest_start = datetime.fromisoformat(data['earliestStart'].replace('T', ' '))
             
-            if 'latest_start' in data and data['latest_start']:
-                latest_start = datetime.fromisoformat(data['latest_start'].replace('T', ' '))
+            if 'latestStart' in data and data['latestStart']:
+                latest_start = datetime.fromisoformat(data['latestStart'].replace('T', ' '))
             
             event = Event(
                 title=data['title'],
                 duration=data['duration'],
                 priority=priority,
                 earliest_start=earliest_start,
-                latest_start=latest_start
+                latest_start=latest_start,
+                event_type=event_type,
+                description=description,
+                location=location
             )
         
         # Add event to calendar
@@ -211,6 +225,126 @@ def get_available_slots():
         'slots': slots_data,
         'count': len(slots_data)
     })
+
+@app.route('/events/<event_id>', methods=['DELETE'])
+def delete_event(event_id):
+    global calendar_instance
+    
+    if not calendar_instance:
+        return jsonify({'success': False, 'message': 'Calendar not initialized'}), 400
+    
+    try:
+        # Find event by ID (using object id)
+        event_to_remove = None
+        for event in calendar_instance.events:
+            if str(id(event)) == event_id:
+                event_to_remove = event
+                break
+        
+        if event_to_remove:
+            calendar_instance.remove_event(event_to_remove)
+            return jsonify({'success': True, 'message': 'Event deleted successfully'})
+        else:
+            return jsonify({'success': False, 'message': 'Event not found'}), 404
+    
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error deleting event: {str(e)}'}), 500
+
+@app.route('/chat', methods=['POST'])
+def chat_endpoint():
+    """Simple chatbot endpoint for natural language event creation"""
+    data = request.json
+    message = data.get('message', '').lower()
+    
+    try:
+        # Simple keyword-based parsing (you could integrate with more sophisticated NLP)
+        response = {
+            'reply': '',
+            'suggestedEvent': None,
+            'action': 'info'
+        }
+        
+        # Extract potential event information
+        suggested_event = parse_natural_language_simple(message)
+        
+        if suggested_event:
+            response['reply'] = f"I understand you want to add: \"{suggested_event['title']}\"\nDuration: {suggested_event['duration']} minutes\nShall I add this to your calendar?"
+            response['suggestedEvent'] = suggested_event
+            response['action'] = 'create_event'
+        else:
+            response['reply'] = "I'd be happy to help you add events! Try saying something like:\n- 'I need to study math for 2 hours'\n- 'Schedule a meeting with John at 3 PM tomorrow'\n- 'Add my chemistry class every Monday at 9 AM'"
+            response['action'] = 'info'
+        
+        return jsonify(response)
+    
+    except Exception as e:
+        return jsonify({
+            'reply': f'Sorry, I had trouble understanding that. Could you try rephrasing?',
+            'action': 'info'
+        })
+
+def parse_natural_language_simple(message):
+    """Simple natural language parsing for events"""
+    import re
+    
+    # Extract duration
+    duration_match = re.search(r'(\d+)\s*(hours?|hrs?|h|minutes?|mins?|m)', message)
+    duration = 60  # default
+    
+    if duration_match:
+        value = int(duration_match.group(1))
+        unit = duration_match.group(2).lower()
+        if unit.startswith('h'):
+            duration = value * 60
+        else:
+            duration = value
+    
+    # Extract title/subject
+    title = "Study Session"  # default
+    
+    subjects = ['math', 'science', 'english', 'history', 'chemistry', 'physics', 'programming', 'coding']
+    activities = ['study', 'meeting', 'class', 'lecture', 'review', 'practice', 'workout', 'exercise']
+    
+    found_subject = None
+    found_activity = None
+    
+    for subject in subjects:
+        if subject in message:
+            found_subject = subject.capitalize()
+            break
+    
+    for activity in activities:
+        if activity in message:
+            found_activity = activity.capitalize()
+            break
+    
+    if found_activity and found_subject:
+        title = f"{found_activity} {found_subject}"
+    elif found_subject:
+        title = f"Study {found_subject}"
+    elif found_activity:
+        title = found_activity
+    
+    # Determine priority
+    priority = 2  # medium default
+    if any(word in message for word in ['urgent', 'important', 'asap', 'critical']):
+        priority = 3
+    elif any(word in message for word in ['low', 'optional', 'maybe']):
+        priority = 1
+    
+    # Determine type
+    event_type = 'flexible'
+    if any(word in message for word in ['class', 'lecture', 'mandatory', 'must']):
+        event_type = 'mandatory'
+    elif any(word in message for word in ['at', 'pm', 'am', ':']):
+        event_type = 'fixed'
+    
+    return {
+        'title': title,
+        'duration': duration,
+        'priority': priority,
+        'type': event_type
+    }
 
 @app.route('/health', methods=['GET'])
 def health_check():

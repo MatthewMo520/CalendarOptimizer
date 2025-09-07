@@ -15,16 +15,23 @@ class Event:
         priority: Priority = Priority.MEDIUM,
         earliest_start: Optional[datetime] = None,
         latest_start: Optional[datetime] = None,
-        fixed_time: Optional[datetime] = None
+        fixed_time: Optional[datetime] = None,
+        event_type: str = 'flexible',  # 'flexible', 'fixed', 'mandatory'
+        description: Optional[str] = None,
+        location: Optional[str] = None
     ):
         self.title = title
         self.duration = duration
         self.priority = priority
         self.fixed_time = fixed_time
+        self.type = event_type
+        self.description = description
+        self.location = location
         
         if fixed_time:
             self.earliest_start = fixed_time
             self.latest_start = fixed_time
+            self.type = 'fixed'  # Override type if fixed_time is provided
         else:
             self.earliest_start = earliest_start
             self.latest_start = latest_start
