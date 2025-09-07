@@ -5,65 +5,15 @@ from event import Event, Priority
 from scheduler import Calendar
 from optimizer import ScheduleOptimizer
 
-def create_sample_events() -> List[Event]:
-    """Create some sample events for testing"""
-    today = datetime.now().replace(hour=9, minute=0, second=0, microsecond=0)
-    
-    events = [
-        Event(
-            "Daily Standup",
-            30,
-            Priority.HIGH,
-            today.replace(hour=9),
-            today.replace(hour=10),
-        ),
-        Event(
-            "Code Review",
-            60,
-            Priority.MEDIUM,
-            today.replace(hour=10),
-            today.replace(hour=16),
-        ),
-        Event(
-            "Lunch Break",
-            60,
-            Priority.MEDIUM,
-            fixed_time=today.replace(hour=12)
-        ),
-        Event(
-            "Project Planning",
-            90,
-            Priority.HIGH,
-            today.replace(hour=13),
-            today.replace(hour=17),
-        ),
-        Event(
-            "Email Processing",
-            45,
-            Priority.LOW,
-            today.replace(hour=9),
-            today.replace(hour=18),
-        ),
-        Event(
-            "Team Meeting",
-            120,
-            Priority.MEDIUM,
-            today.replace(hour=14),
-            today.replace(hour=16),
-        ),
-    ]
-    
-    return events
 
 def print_menu():
     print("\n=== Calendar AI Optimizer ===")
-    print("1. Load sample events")
-    print("2. Add custom event")
-    print("3. Show current schedule")
-    print("4. Optimize schedule")
-    print("5. Show optimization report")
-    print("6. Clear schedule")
-    print("7. Exit")
+    print("1. Add custom event")
+    print("2. Show current schedule")
+    print("3. Optimize schedule")
+    print("4. Show optimization report")
+    print("5. Clear schedule")
+    print("6. Exit")
     print("=" * 30)
 
 def get_priority_input() -> Priority:
@@ -134,26 +84,19 @@ def main():
         print_menu()
         
         try:
-            choice = input("Enter your choice (1-7): ").strip()
+            choice = input("Enter your choice (1-6): ").strip()
             
             if choice == '1':
-                # Load sample events
-                sample_events = create_sample_events()
-                for event in sample_events:
-                    calendar.add_event(event)
-                print(f"Loaded {len(sample_events)} sample events.")
-                
-            elif choice == '2':
                 # Add custom event
                 add_custom_event(calendar)
                 
-            elif choice == '3':
+            elif choice == '2':
                 # Show current schedule
                 print("\n" + "="*50)
                 print(calendar.get_schedule_summary())
                 print("="*50)
                 
-            elif choice == '4':
+            elif choice == '3':
                 # Optimize schedule
                 print("\nOptimizing schedule...")
                 success = optimizer.optimize_schedule()
@@ -169,23 +112,23 @@ def main():
                     for event1, event2, resolution in resolutions:
                         print(f"  - {resolution}")
                 
-            elif choice == '5':
+            elif choice == '4':
                 # Show optimization report
                 print("\n" + "="*50)
                 print(optimizer.get_optimization_report())
                 print("="*50)
                 
-            elif choice == '6':
+            elif choice == '5':
                 # Clear schedule
                 calendar.clear_schedule()
                 print("Schedule cleared.")
                 
-            elif choice == '7':
+            elif choice == '6':
                 print("Thank you for using Calendar AI Optimizer!")
                 break
                 
             else:
-                print("Invalid choice. Please enter a number between 1-7.")
+                print("Invalid choice. Please enter a number between 1-6.")
                 
         except KeyboardInterrupt:
             print("\nExiting...")
