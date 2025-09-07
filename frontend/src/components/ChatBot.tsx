@@ -8,6 +8,15 @@ interface ChatBotProps {
   currentEvents: Event[];
 }
 
+const getPriorityText = (priority: 1 | 2 | 3 | undefined): string => {
+  switch (priority) {
+    case 1: return 'High';
+    case 2: return 'Medium';
+    case 3: return 'Low';
+    default: return 'Medium';
+  }
+};
+
 const ChatBot: React.FC<ChatBotProps> = ({ onEventCreate, currentEvents }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -64,9 +73,9 @@ const ChatBot: React.FC<ChatBotProps> = ({ onEventCreate, currentEvents }) => {
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
-        content: `I've parsed your request! Here's what I understand:\n\n📅 **${parsedEvent.event.title}**\n⏱️ Duration: ${parsedEvent.event.duration} minutes\n📊 Priority: ${getPriorityText(parsedEvent.event.priority)}\n📝 Type: ${parsedEvent.event.type}\n\n${parsedEvent.event.type === 'fixed' && parsedEvent.event.fixedTime ? `⏰ Fixed time: ${new Date(parsedEvent.event.fixedTime).toLocaleString()}` : ''}\n${parsedEvent.event.earliestStart && parsedEvent.event.latestStart ? `📍 Time window: ${new Date(parsedEvent.event.earliestStart).toLocaleString()} - ${new Date(parsedEvent.event.latestStart).toLocaleString()}` : ''}\n\nWould you like me to add this to your calendar?`,
+        content: `I've parsed your request! Here's what I understand:\n\n📅 **${parsedEvent.event.title}**\n⏱️ Duration: ${parsedEvent.event.duration} minutes\n📊 Priority: ${getPriorityText(parsedEvent.event.priority || 2)}\n📝 Type: ${parsedEvent.event.type}\n\n${parsedEvent.event.type === 'fixed' && parsedEvent.event.fixedTime ? `⏰ Fixed time: ${new Date(parsedEvent.event.fixedTime).toLocaleString()}` : ''}\n${parsedEvent.event.earliestStart && parsedEvent.event.latestStart ? `📍 Time window: ${new Date(parsedEvent.event.earliestStart).toLocaleString()} - ${new Date(parsedEvent.event.latestStart).toLocaleString()}` : ''}\n\nWould you like me to add this to your calendar?`,
         timestamp: new Date().toISOString(),
-        event: parsedEvent.event,
+        event: parsedEvent.event as Event,
       };
 
       setMessages(prev => [...prev, assistantMessage]);

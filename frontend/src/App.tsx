@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Settings, BarChart3, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, BarChart3, AlertCircle } from 'lucide-react';
 import { Event, CalendarData } from './types/Event';
 import ChatBot from './components/ChatBot';
 import EventForm from './components/EventForm';
