@@ -181,7 +181,7 @@ function App() {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Calendar AI Optimizer</h1>
-                <p className="text-sm text-gray-500">Smart scheduling for your busy life</p>
+                <p className="text-sm text-gray-500">Smart scheduling for your busy life - Now live!</p>
               </div>
             </div>
 
