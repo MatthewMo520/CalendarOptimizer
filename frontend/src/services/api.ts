@@ -10,6 +10,15 @@ const api = axios.create({
   },
 });
 
+// Add token to requests if available
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('authToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 export interface CreateEventRequest {
   title: string;
   duration: number;
@@ -103,7 +112,7 @@ class ApiService {
 
   async clearSchedule(): Promise<boolean> {
     try {
-      await api.post('/clear');
+      await api.delete('/events/clear');
       return true;
     } catch (error) {
       console.error('Failed to clear schedule:', error);

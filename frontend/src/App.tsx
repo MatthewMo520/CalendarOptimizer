@@ -6,9 +6,12 @@ import EventForm from './components/EventForm';
 import CalendarView from './components/CalendarView';
 import EventsList from './components/EventsList';
 import StatusBar from './components/StatusBar';
+import ScheduleUpload from './components/ScheduleUpload';
 import ApiService from './services/api';
+// Debug import for testing API key
+import './utils/testApiKey';
 
-function App() {
+function AppContent() {
   const [events, setEvents] = useState<Event[]>([]);
   const [calendarData, setCalendarData] = useState<CalendarData>({ events: [], conflicts: [] });
   const [isLoading, setIsLoading] = useState(false);
@@ -81,6 +84,56 @@ function App() {
     }
   };
 
+  const handleBatchEventCreate = async (eventsData: Partial<Event>[]) => {
+    try {
+      setIsLoading(true);
+      const createdEvents: Event[] = [];
+
+      for (const eventData of eventsData) {
+        try {
+          const newEvent = await ApiService.createEvent({
+            title: eventData.title || 'New Event',
+            duration: eventData.duration || 60,
+            priority: eventData.priority || 2,
+            type: eventData.type || 'flexible',
+            description: eventData.description,
+            location: eventData.location,
+            earliestStart: eventData.earliestStart,
+            latestStart: eventData.latestStart,
+            fixedTime: eventData.fixedTime,
+          });
+
+          if (newEvent) {
+            createdEvents.push(newEvent);
+          }
+        } catch (error) {
+          console.error('Failed to create event:', error);
+          // Fallback to local creation if API fails
+          const localEvent: Event = {
+            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            title: eventData.title || 'New Event',
+            duration: eventData.duration || 60,
+            priority: eventData.priority || 2,
+            type: eventData.type || 'flexible',
+            isScheduled: false,
+            ...eventData,
+          };
+          createdEvents.push(localEvent);
+        }
+      }
+
+      if (createdEvents.length > 0) {
+        const updatedEvents = [...events, ...createdEvents];
+        setEvents(updatedEvents);
+        setCalendarData(prev => ({ ...prev, events: updatedEvents }));
+      }
+    } catch (error) {
+      console.error('Failed to create batch events:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleEventDelete = async (eventId: string) => {
     try {
       const success = await ApiService.deleteEvent(eventId);
@@ -110,16 +163,67 @@ function App() {
   };
 
   const localOptimize = () => {
-    // Simple local optimization logic
-    const optimized = [...events].sort((a, b) => b.priority - a.priority);
+    // Enhanced local optimization logic
+    const optimized = [...events].sort((a, b) => a.priority - b.priority); // Sort by priority (1=highest)
     let currentTime = new Date();
     currentTime.setHours(9, 0, 0, 0); // Start at 9 AM
 
     const scheduledEvents = optimized.map(event => {
+      // Handle events with fixed times (from schedule upload)
       if (event.type === 'mandatory' || event.fixedTime) {
-        return event; // Keep mandatory/fixed events as is
+        const scheduledEvent = { 
+          ...event, 
+          isScheduled: true 
+        };
+
+        // If fixedTime contains a time string, parse and convert to scheduledTime
+        if (event.fixedTime && typeof event.fixedTime === 'string') {
+          // Parse time like "2:30 PM" or "14:30"
+          const timeMatch = event.fixedTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+          if (timeMatch) {
+            let [, hours, minutes, ampm] = timeMatch;
+            let hour24 = parseInt(hours);
+            
+            // Convert to 24-hour format if needed
+            if (ampm && ampm.toUpperCase() === 'PM' && hour24 !== 12) {
+              hour24 += 12;
+            } else if (ampm && ampm.toUpperCase() === 'AM' && hour24 === 12) {
+              hour24 = 0;
+            }
+
+            // Create scheduled time for the correct day of the week
+            // Start with the beginning of the current week (Monday)
+            const today = new Date();
+            const startOfWeek = new Date(today);
+            startOfWeek.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1)); // Monday of current week
+            const scheduleDate = new Date(startOfWeek);
+            
+            // If event has dayOfWeek, schedule for that day of the current week
+            if (event.dayOfWeek !== undefined) {
+              const targetDay = event.dayOfWeek;
+              
+              // Convert Sunday=0 to JavaScript day system
+              let jsTargetDay;
+              if (targetDay === 0) { // Sunday
+                jsTargetDay = 0;
+              } else {
+                jsTargetDay = targetDay; // Monday=1, Tuesday=2, etc.
+              }
+              
+              // Set to the target day of the current week
+              const daysFromMonday = jsTargetDay === 0 ? 6 : jsTargetDay - 1; // Convert to days from Monday
+              scheduleDate.setDate(startOfWeek.getDate() + daysFromMonday);
+            }
+            
+            scheduleDate.setHours(hour24, parseInt(minutes), 0, 0);
+            scheduledEvent.scheduledTime = scheduleDate.toISOString();
+          }
+        }
+
+        return scheduledEvent;
       }
 
+      // Handle flexible events
       const scheduledEvent = { 
         ...event, 
         scheduledTime: currentTime.toISOString(),
@@ -230,12 +334,14 @@ function App() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Sidebar - Event Form */}
-          <div className="lg:col-span-1">
+          {/* Sidebar - Event Form and Schedule Upload */}
+          <div className="lg:col-span-1 space-y-6">
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Add New Event</h2>
               <EventForm onEventCreate={handleEventCreate} isLoading={isLoading} />
             </div>
+            
+            <ScheduleUpload onEventsExtracted={handleBatchEventCreate} />
           </div>
 
           {/* Main Content Area */}
@@ -327,6 +433,10 @@ function App() {
       )}
     </div>
   );
+}
+
+function App() {
+  return <AppContent />;
 }
 
 export default App;

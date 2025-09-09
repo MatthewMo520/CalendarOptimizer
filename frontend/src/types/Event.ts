@@ -8,6 +8,7 @@ export interface Event {
   earliestStart?: string; // ISO string
   latestStart?: string; // ISO string
   fixedTime?: string; // ISO string
+  dayOfWeek?: number; // 0=Sunday, 1=Monday, etc. for class schedules
   isScheduled: boolean;
   description?: string;
   location?: string;

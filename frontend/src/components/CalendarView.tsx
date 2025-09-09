@@ -1,6 +1,6 @@
-import React from 'react';
-import { format, startOfWeek, addDays, isSameDay, parseISO } from 'date-fns';
-import { Clock, MapPin, AlertTriangle } from 'lucide-react';
+import React, { useState } from 'react';
+import { format, startOfWeek, addDays, isSameDay, parseISO, addWeeks, subWeeks } from 'date-fns';
+import { Clock, MapPin, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Event } from '../types/Event';
 
 interface CalendarViewProps {
@@ -15,20 +15,54 @@ interface CalendarViewProps {
 }
 
 const CalendarView: React.FC<CalendarViewProps> = ({ events, conflicts, isLoading }) => {
+  const [currentWeekStart, setCurrentWeekStart] = useState(() => 
+    startOfWeek(new Date(), { weekStartsOn: 1 })
+  );
+  
   const today = new Date();
-  const startOfCurrentWeek = startOfWeek(today, { weekStartsOn: 1 }); // Monday
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfCurrentWeek, i));
+  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i));
   const hours = Array.from({ length: 12 }, (_, i) => i + 8); // 8 AM to 7 PM
 
   const getEventsForTimeSlot = (day: Date, hour: number) => {
     return events.filter(event => {
-      if (!event.scheduledTime) return false;
+      if (!event.scheduledTime && !event.dayOfWeek) return false;
       
-      const eventDate = parseISO(event.scheduledTime);
-      const eventHour = eventDate.getHours();
-      const eventEndHour = eventHour + Math.ceil(event.duration / 60);
+      // Handle recurring events (classes with dayOfWeek and fixedTime)
+      if (event.dayOfWeek !== undefined && event.fixedTime) {
+        const dayOfWeek = day.getDay();
+        const targetDay = event.dayOfWeek;
+        
+        // Convert to match: Sunday=0, Monday=1, etc.
+        if (dayOfWeek !== targetDay) return false;
+        
+        // Parse the fixed time to get hour
+        const timeMatch = event.fixedTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+        if (timeMatch) {
+          let [, hours, minutes, ampm] = timeMatch;
+          let hour24 = parseInt(hours);
+          
+          if (ampm && ampm.toUpperCase() === 'PM' && hour24 !== 12) {
+            hour24 += 12;
+          } else if (ampm && ampm.toUpperCase() === 'AM' && hour24 === 12) {
+            hour24 = 0;
+          }
+          
+          const eventEndHour = hour24 + Math.ceil(event.duration / 60);
+          return hour24 <= hour && hour < eventEndHour;
+        }
+        return false;
+      }
       
-      return isSameDay(eventDate, day) && eventHour <= hour && hour < eventEndHour;
+      // Handle scheduled events
+      if (event.scheduledTime) {
+        const eventDate = parseISO(event.scheduledTime);
+        const eventHour = eventDate.getHours();
+        const eventEndHour = eventHour + Math.ceil(event.duration / 60);
+        
+        return isSameDay(eventDate, day) && eventHour <= hour && hour < eventEndHour;
+      }
+      
+      return false;
     });
   };
 
@@ -38,10 +72,22 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, conflicts, isLoadin
     return Math.min(height, 180); // Maximum 3 hours display
   };
 
-  const getEventPosition = (scheduledTime: string) => {
-    const eventDate = parseISO(scheduledTime);
-    const minutes = eventDate.getMinutes();
-    return (minutes / 60) * 60; // Position within the hour slot
+  const getEventPosition = (event: Event) => {
+    if (event.fixedTime && event.dayOfWeek !== undefined) {
+      // Parse fixed time to get minutes
+      const timeMatch = event.fixedTime.match(/(\d{1,2}):(\d{2})/i);
+      if (timeMatch) {
+        const minutes = parseInt(timeMatch[2]);
+        return (minutes / 60) * 60;
+      }
+      return 0;
+    }
+    if (event.scheduledTime) {
+      const eventDate = parseISO(event.scheduledTime);
+      const minutes = eventDate.getMinutes();
+      return (minutes / 60) * 60;
+    }
+    return 0;
   };
 
   const getPriorityColor = (priority: 1 | 2 | 3, type: string) => {
@@ -63,9 +109,26 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, conflicts, isLoadin
     );
   };
 
-  const formatEventTime = (scheduledTime: string) => {
-    const date = parseISO(scheduledTime);
-    return format(date, 'HH:mm');
+  const formatEventTime = (event: Event) => {
+    if (event.fixedTime && event.dayOfWeek !== undefined) {
+      // For recurring events, show the fixed time
+      return event.fixedTime;
+    }
+    if (event.scheduledTime) {
+      const date = parseISO(event.scheduledTime);
+      return format(date, 'HH:mm');
+    }
+    return '';
+  };
+
+  const navigateWeek = (direction: 'prev' | 'next') => {
+    setCurrentWeekStart(prev => 
+      direction === 'next' ? addWeeks(prev, 1) : subWeeks(prev, 1)
+    );
+  };
+
+  const goToToday = () => {
+    setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
   };
 
   if (isLoading) {
@@ -87,10 +150,36 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, conflicts, isLoadin
     <div className="bg-white rounded-xl shadow-lg overflow-hidden">
       {/* Header */}
       <div className="p-6 border-b border-gray-200">
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Weekly Calendar</h2>
-        <p className="text-sm text-gray-600">
-          {format(startOfCurrentWeek, 'MMM d')} - {format(addDays(startOfCurrentWeek, 6), 'MMM d, yyyy')}
-        </p>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Weekly Calendar</h2>
+            <p className="text-sm text-gray-600">
+              {format(currentWeekStart, 'MMM d')} - {format(addDays(currentWeekStart, 6), 'MMM d, yyyy')}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigateWeek('prev')}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Previous week"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button
+              onClick={goToToday}
+              className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm font-medium"
+            >
+              Today
+            </button>
+            <button
+              onClick={() => navigateWeek('next')}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Next week"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
         
         {conflicts.length > 0 && (
           <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -146,10 +235,29 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, conflicts, isLoadin
                     >
                       {slotEvents.map((event, eventIndex) => {
                         const isConflicted = isEventInConflict(event.title);
-                        const eventStart = parseISO(event.scheduledTime!);
                         
-                        // Only show event in the hour it starts
-                        if (eventStart.getHours() !== hour) return null;
+                        // For scheduled events, only show in the hour it starts
+                        if (event.scheduledTime) {
+                          const eventStart = parseISO(event.scheduledTime);
+                          if (eventStart.getHours() !== hour) return null;
+                        }
+                        
+                        // For recurring events, show in the correct hour based on fixedTime
+                        if (event.dayOfWeek !== undefined && event.fixedTime) {
+                          const timeMatch = event.fixedTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+                          if (timeMatch) {
+                            let [, hours, minutes, ampm] = timeMatch;
+                            let hour24 = parseInt(hours);
+                            
+                            if (ampm && ampm.toUpperCase() === 'PM' && hour24 !== 12) {
+                              hour24 += 12;
+                            } else if (ampm && ampm.toUpperCase() === 'AM' && hour24 === 12) {
+                              hour24 = 0;
+                            }
+                            
+                            if (hour24 !== hour) return null;
+                          }
+                        }
                         
                         return (
                           <div
@@ -158,10 +266,10 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, conflicts, isLoadin
                               getPriorityColor(event.priority, event.type)
                             } ${isConflicted ? 'ring-2 ring-red-400 ring-opacity-75' : ''}`}
                             style={{
-                              top: `${getEventPosition(event.scheduledTime!)}px`,
+                              top: `${getEventPosition(event)}px`,
                               height: `${getEventHeight(event.duration)}px`,
                             }}
-                            title={`${event.title}\n${formatEventTime(event.scheduledTime!)} - ${event.duration}min\nPriority: ${['', 'Low', 'Medium', 'High'][event.priority]}\nType: ${event.type}`}
+                            title={`${event.title}\n${formatEventTime(event)} - ${event.duration}min\nPriority: ${['', 'Low', 'Medium', 'High'][event.priority]}\nType: ${event.type}`}
                           >
                             <div className="font-medium truncate">
                               {event.title}
@@ -169,7 +277,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, conflicts, isLoadin
                             </div>
                             <div className="flex items-center gap-1 mt-1 opacity-90">
                               <Clock className="w-3 h-3" />
-                              <span>{formatEventTime(event.scheduledTime!)}</span>
+                              <span>{formatEventTime(event)}</span>
                               <span>({event.duration}m)</span>
                             </div>
                             {event.location && (
