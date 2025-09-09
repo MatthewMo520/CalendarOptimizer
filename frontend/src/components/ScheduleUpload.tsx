@@ -27,31 +27,76 @@ const ScheduleUpload: React.FC<ScheduleUploadProps> = ({ onEventsExtracted }) =>
     const days: number[] = [];
     const dayStr = dayString.toUpperCase();
     
-    // Handle common patterns
+    console.log(`🔍 Parsing day string: "${dayString}" -> "${dayStr}"`);
+    
+    // Handle common patterns first
     if (dayStr.includes('MWF') || dayStr.includes('M W F')) {
+      console.log(`✅ Found MWF pattern -> [1, 3, 5]`);
       return [1, 3, 5]; // Monday, Wednesday, Friday
     }
     if (dayStr.includes('TTH') || dayStr.includes('T TH') || dayStr.includes('TU TH')) {
+      console.log(`✅ Found TTH pattern -> [2, 4]`);
       return [2, 4]; // Tuesday, Thursday
     }
     if (dayStr.includes('MW') || dayStr.includes('M W')) {
+      console.log(`✅ Found MW pattern -> [1, 3]`);
       return [1, 3]; // Monday, Wednesday
     }
     if (dayStr.includes('WF') || dayStr.includes('W F')) {
+      console.log(`✅ Found WF pattern -> [3, 5]`);
       return [3, 5]; // Wednesday, Friday
     }
     
+    // Check for "Monday Thursday" or "Monday, Thursday" patterns
+    if (dayStr.includes('MONDAY') && dayStr.includes('THURSDAY')) {
+      console.log(`✅ Found Monday Thursday pattern -> [1, 4]`);
+      return [1, 4];
+    }
+    if (dayStr.includes('WEDNESDAY') && dayStr.includes('FRIDAY')) {
+      console.log(`✅ Found Wednesday Friday pattern -> [3, 5]`);
+      return [3, 5];
+    }
+    
     // Check individual days
-    if (dayStr.includes('SUN') || dayStr.includes('SUNDAY')) days.push(0);
-    if (dayStr.includes('MON') || dayStr.includes('MONDAY') || dayStr.includes(' M ') || dayStr.startsWith('M ') || dayStr.endsWith(' M')) days.push(1);
-    if (dayStr.includes('TUE') || dayStr.includes('TUESDAY') || dayStr.includes(' T ') || dayStr.startsWith('T ') || dayStr.endsWith(' T')) days.push(2);
-    if (dayStr.includes('WED') || dayStr.includes('WEDNESDAY') || dayStr.includes(' W ') || dayStr.startsWith('W ') || dayStr.endsWith(' W')) days.push(3);
-    if (dayStr.includes('THU') || dayStr.includes('THURSDAY') || dayStr.includes('TH')) days.push(4);
-    if (dayStr.includes('FRI') || dayStr.includes('FRIDAY') || dayStr.includes(' F ') || dayStr.startsWith('F ') || dayStr.endsWith(' F')) days.push(5);
-    if (dayStr.includes('SAT') || dayStr.includes('SATURDAY')) days.push(6);
+    console.log(`🔍 Checking individual days in: "${dayStr}"`);
+    if (dayStr.includes('SUN') || dayStr.includes('SUNDAY')) {
+      console.log(`✅ Found Sunday -> adding 0`);
+      days.push(0);
+    }
+    if (dayStr.includes('MON') || dayStr.includes('MONDAY')) {
+      console.log(`✅ Found Monday -> adding 1`);
+      days.push(1);
+    }
+    if (dayStr.includes('TUE') || dayStr.includes('TUESDAY')) {
+      console.log(`✅ Found Tuesday -> adding 2`);
+      days.push(2);
+    }
+    if (dayStr.includes('WED') || dayStr.includes('WEDNESDAY')) {
+      console.log(`✅ Found Wednesday -> adding 3`);
+      days.push(3);
+    }
+    if (dayStr.includes('THU') || dayStr.includes('THURSDAY')) {
+      console.log(`✅ Found Thursday -> adding 4`);
+      days.push(4);
+    }
+    if (dayStr.includes('FRI') || dayStr.includes('FRIDAY')) {
+      console.log(`✅ Found Friday -> adding 5`);
+      days.push(5);
+    }
+    if (dayStr.includes('SAT') || dayStr.includes('SATURDAY')) {
+      console.log(`✅ Found Saturday -> adding 6`);
+      days.push(6);
+    }
+    
+    console.log(`🎯 Final parsed days: [${days.join(', ')}]`);
     
     // If no days found, default to Monday
-    return days.length > 0 ? days : [1];
+    if (days.length === 0) {
+      console.log(`⚠️ No days found, defaulting to Monday -> [1]`);
+      return [1];
+    }
+    
+    return days;
   };
 
   const getDayName = (dayOfWeek: number): string => {
@@ -71,20 +116,28 @@ const ScheduleUpload: React.FC<ScheduleUploadProps> = ({ onEventsExtracted }) =>
       const response = await extractScheduleFromImage(base64Image);
       
       if (response.events && response.events.length > 0) {
+        console.log(`🤖 AI extracted ${response.events.length} events:`, response.events);
         setExtractedEvents(response.events);
         setUploadStatus('success');
         
         // Convert to Event format and create separate events for each day
         const events: Partial<Event>[] = [];
         
+        let totalCreated = 0;
         response.events.forEach((event: ExtractedEvent, index: number) => {
           // Handle multiple days (e.g., "MWF", "Mon Wed Fri", "Tuesday/Thursday")
-          console.log(`Parsing day string: "${event.day}" for event: ${event.title}`);
+          console.log(`\n📚 Processing event #${index + 1}: "${event.title}"`);
+          console.log(`   📅 Raw day string: "${event.day}"`);
+          console.log(`   🕐 Time: "${event.time}"`);
+          console.log(`   📍 Location: "${event.location || 'N/A'}"`);
+          console.log(`   ⏱️ Duration: ${event.duration} min`);
+          
           const days = parseDaysOfWeek(event.day);
-          console.log(`Parsed days:`, days);
+          console.log(`   🎯 Will create ${days.length} events for days: [${days.map(d => getDayName(d)).join(', ')}]`);
           
           days.forEach((dayOfWeek: number, dayIndex: number) => {
-            console.log(`Creating event: ${event.title} for day ${dayOfWeek} (${getDayName(dayOfWeek)}) at ${event.time}`);
+            totalCreated++;
+            console.log(`     ➕ Creating event #${totalCreated}: ${event.title} (${getDayName(dayOfWeek)}) at ${event.time}`);
             events.push({
               id: `schedule-${Date.now()}-${index}-${dayIndex}`,
               title: `${event.title} (${getDayName(dayOfWeek)})`,
@@ -100,6 +153,8 @@ const ScheduleUpload: React.FC<ScheduleUploadProps> = ({ onEventsExtracted }) =>
             });
           });
         });
+        
+        console.log(`\n🎉 SUMMARY: Created ${totalCreated} events from ${response.events.length} AI-extracted events`);
         
         onEventsExtracted(events);
       } else {
@@ -141,14 +196,27 @@ const ScheduleUpload: React.FC<ScheduleUploadProps> = ({ onEventsExtracted }) =>
         contents: [{
           parts: [
             {
-              text: `Analyze this schedule image and extract all class/event information. Return ONLY a JSON object in this exact format:
+              text: `Analyze this weekly class schedule grid image VERY CAREFULLY. Look at which columns each class appears in to determine the correct days.
+
+This is a weekly schedule with columns for days of the week. Each class block shows exactly which days it meets.
+
+CRITICAL ANALYSIS RULES:
+- Look at the COLUMN POSITIONS to determine days, not just text
+- If a class appears in Monday/Wednesday/Friday columns = "MWF"
+- If a class appears in Tuesday/Thursday columns = "TTH"  
+- If a class appears in Monday/Wednesday columns = "MW"
+- Pay special attention to which columns ECON appears in - it should be Tuesday/Thursday if in those columns
+- Extract ONLY classes that are actually visible in the schedule grid
+- Each class should appear ONCE with all its meeting days combined
+
+Return ONLY a JSON object in this exact format:
 {
   "events": [
     {
-      "title": "Course/Event Name",
-      "time": "HH:MM AM/PM",
-      "day": "Day of week",
-      "location": "Room/Location (if available)",
+      "title": "Exact Course Name (e.g., CHEM 201, ECON 101)",
+      "time": "HH:MM AM/PM (start time)",
+      "day": "MWF or TTH or MW based on column positions", 
+      "location": "Room if visible",
       "duration": 60,
       "type": "mandatory",
       "priority": 1
@@ -156,15 +224,14 @@ const ScheduleUpload: React.FC<ScheduleUploadProps> = ({ onEventsExtracted }) =>
   ]
 }
 
-Guidelines:
-- Extract course names, times, days, and locations
-- Duration should be estimated (typical classes are 50-90 minutes)  
-- Type should ALWAYS be "mandatory" for all classes (they cannot be moved)
-- Priority should ALWAYS be 1 (highest priority) for all classes
-- Parse all visible schedule entries
-- If time ranges are shown (like "9:00-10:30"), calculate duration in minutes
-- Classes are fixed-time events that cannot be rescheduled
-- Return valid JSON only, no additional text`
+SPECIFIC INSTRUCTIONS:
+- Look at ECON carefully - determine if it's in Tuesday/Thursday columns or Monday/Wednesday/Friday columns
+- Use EXACT course names from the image
+- Time format: "9:00 AM", "2:30 PM" (start time only)
+- Duration: 50-90 minutes based on time block length
+- Day patterns based on COLUMN ANALYSIS: "MWF", "TTH", "MW", "WF", etc.
+- Location: room numbers if clearly visible
+- Return only valid JSON, no additional text`
             },
             {
               inline_data: {
@@ -235,14 +302,14 @@ Guidelines:
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-lg p-6">
+    <div className="bg-white rounded-lg shadow-md p-6">
       <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg">
+        <div className="p-2 bg-purple-600 rounded-md">
           <Image className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Upload Schedule</h2>
-          <p className="text-sm text-gray-500">Import your class schedule from an image</p>
+          <h2 className="text-lg font-semibold text-gray-900">Schedule Import</h2>
+          <p className="text-sm text-gray-600">Upload class schedule image for automatic parsing</p>
         </div>
       </div>
 
@@ -269,9 +336,9 @@ Guidelines:
               <p className="text-sm text-gray-500 mb-4">
                 Supports JPG, PNG, PDF screenshots of schedules
               </p>
-              <label className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors">
+              <label className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer transition-colors">
                 <Upload className="w-4 h-4" />
-                Choose File
+                Select File
                 <input
                   type="file"
                   className="hidden"
@@ -287,8 +354,8 @@ Guidelines:
       {uploadStatus === 'processing' && (
         <div className="text-center py-8">
           <Loader className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Processing Schedule...</h3>
-          <p className="text-sm text-gray-500">Using AI to extract your class information</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Processing Image...</h3>
+          <p className="text-sm text-gray-600">Extracting schedule information</p>
         </div>
       )}
 
@@ -296,7 +363,7 @@ Guidelines:
         <div className="space-y-4">
           <div className="flex items-center gap-2 text-green-600 mb-4">
             <CheckCircle2 className="w-5 h-5" />
-            <span className="font-medium">Successfully extracted {extractedEvents.length} events!</span>
+            <span className="font-medium">{extractedEvents.length} classes imported successfully</span>
           </div>
 
           {selectedImage && (
@@ -336,7 +403,7 @@ Guidelines:
               onClick={resetUpload}
               className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
             >
-              Upload Another
+              Import Another
             </button>
           </div>
         </div>
@@ -345,7 +412,7 @@ Guidelines:
       {uploadStatus === 'error' && (
         <div className="text-center py-6">
           <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Processing Failed</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Import Failed</h3>
           <p className="text-sm text-red-600 mb-4">{errorMessage}</p>
           <button
             onClick={resetUpload}

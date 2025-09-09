@@ -25,15 +25,37 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, conflicts, isLoadin
 
   const getEventsForTimeSlot = (day: Date, hour: number) => {
     return events.filter(event => {
-      if (!event.scheduledTime && !event.dayOfWeek) return false;
+      // Debug: Log every event we're checking
+      console.log(`🔍 CHECKING EVENT: "${event.title}" for ${format(day, 'EEEE')} ${hour}:00`);
+      console.log(`   📊 Event data:`, {
+        hasScheduledTime: !!event.scheduledTime,
+        hasDayOfWeek: event.dayOfWeek !== undefined,
+        hasFixedTime: !!event.fixedTime,
+        scheduledTime: event.scheduledTime,
+        dayOfWeek: event.dayOfWeek,
+        fixedTime: event.fixedTime,
+        type: event.type,
+        isScheduled: event.isScheduled
+      });
       
-      // Handle recurring events (classes with dayOfWeek and fixedTime)
+      if (!event.scheduledTime && !event.dayOfWeek) {
+        console.log(`   ❌ Skipping - no scheduledTime and no dayOfWeek`);
+        return false;
+      }
+      
+      // PRIORITY: Handle recurring events FIRST (classes with dayOfWeek and fixedTime)
+      // These should use dayOfWeek logic even if they have scheduledTime
       if (event.dayOfWeek !== undefined && event.fixedTime) {
         const dayOfWeek = day.getDay();
         const targetDay = event.dayOfWeek;
         
+        console.log(`🔍 Recurring event check - "${event.title}": Current day ${format(day, 'EEEE')} (${dayOfWeek}) vs Target day ${targetDay}`);
+        
         // Convert to match: Sunday=0, Monday=1, etc.
-        if (dayOfWeek !== targetDay) return false;
+        if (dayOfWeek !== targetDay) {
+          console.log(`   ❌ Day mismatch - skipping`);
+          return false;
+        }
         
         // Parse the fixed time to get hour
         const timeMatch = event.fixedTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
@@ -53,8 +75,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, conflicts, isLoadin
         return false;
       }
       
-      // Handle scheduled events
-      if (event.scheduledTime) {
+      // Handle scheduled events (only if NO dayOfWeek is set)
+      if (event.scheduledTime && event.dayOfWeek === undefined) {
         const eventDate = parseISO(event.scheduledTime);
         const eventHour = eventDate.getHours();
         const eventEndHour = eventHour + Math.ceil(event.duration / 60);

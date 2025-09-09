@@ -176,8 +176,15 @@ function AppContent() {
           isScheduled: true 
         };
 
-        // If fixedTime contains a time string, parse and convert to scheduledTime
-        if (event.fixedTime && typeof event.fixedTime === 'string') {
+        // For recurring class events (with dayOfWeek + fixedTime), DON'T set scheduledTime
+        // The calendar handles these as recurring events using dayOfWeek and fixedTime
+        if (event.dayOfWeek !== undefined && event.fixedTime) {
+          // Just mark as scheduled but keep dayOfWeek + fixedTime for recurring display
+          return scheduledEvent;
+        }
+
+        // For other fixed events (without dayOfWeek), set a specific scheduledTime
+        if (event.fixedTime && typeof event.fixedTime === 'string' && event.dayOfWeek === undefined) {
           // Parse time like "2:30 PM" or "14:30"
           const timeMatch = event.fixedTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
           if (timeMatch) {
@@ -191,30 +198,8 @@ function AppContent() {
               hour24 = 0;
             }
 
-            // Create scheduled time for the correct day of the week
-            // Start with the beginning of the current week (Monday)
-            const today = new Date();
-            const startOfWeek = new Date(today);
-            startOfWeek.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1)); // Monday of current week
-            const scheduleDate = new Date(startOfWeek);
-            
-            // If event has dayOfWeek, schedule for that day of the current week
-            if (event.dayOfWeek !== undefined) {
-              const targetDay = event.dayOfWeek;
-              
-              // Convert Sunday=0 to JavaScript day system
-              let jsTargetDay;
-              if (targetDay === 0) { // Sunday
-                jsTargetDay = 0;
-              } else {
-                jsTargetDay = targetDay; // Monday=1, Tuesday=2, etc.
-              }
-              
-              // Set to the target day of the current week
-              const daysFromMonday = jsTargetDay === 0 ? 6 : jsTargetDay - 1; // Convert to days from Monday
-              scheduleDate.setDate(startOfWeek.getDate() + daysFromMonday);
-            }
-            
+            // Set scheduled time for today
+            const scheduleDate = new Date();
             scheduleDate.setHours(hour24, parseInt(minutes), 0, 0);
             scheduledEvent.scheduledTime = scheduleDate.toISOString();
           }
@@ -262,9 +247,9 @@ function AppContent() {
   }> = ({ id, icon, label }) => (
     <button
       onClick={() => setActiveTab(id)}
-      className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 ${
+      className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
         activeTab === id
-          ? 'bg-primary-600 text-white shadow-lg'
+          ? 'bg-blue-600 text-white'
           : 'text-gray-600 hover:bg-gray-100'
       }`}
     >
@@ -280,12 +265,12 @@ function AppContent() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg">
+              <div className="p-2 bg-blue-600 rounded-md">
                 <Calendar className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Calendar AI Optimizer</h1>
-                <p className="text-sm text-gray-500">Smart scheduling for your busy life - Now live!</p>
+                <h1 className="text-xl font-semibold text-gray-900">Schedule Manager</h1>
+                <p className="text-sm text-gray-600">Intelligent calendar organization system</p>
               </div>
             </div>
 
@@ -306,7 +291,7 @@ function AppContent() {
               <button
                 onClick={handleOptimizeSchedule}
                 disabled={isLoading || events.length === 0}
-                className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2"
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
               >
                 <BarChart3 className="w-4 h-4" />
                 <span className="hidden sm:block">Optimize</span>
@@ -315,7 +300,7 @@ function AppContent() {
               <button
                 onClick={handleClearSchedule}
                 disabled={isLoading || events.length === 0}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 Clear All
               </button>

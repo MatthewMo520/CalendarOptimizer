@@ -86,19 +86,24 @@ class AIChatService {
   }
 
   private buildSystemPrompt(currentEvents: Event[]): string {
-    const currentTime = new Date().toLocaleString();
+    const now = new Date();
+    const currentTime = now.toLocaleString();
+    const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' });
     const eventsContext = currentEvents.length > 0 
       ? `Current events in calendar: ${currentEvents.map(e => `"${e.title}" (${e.duration}min, priority ${e.priority})`).join(', ')}`
       : 'Calendar is currently empty';
 
-    return `You are a friendly AI calendar assistant. Current time: ${currentTime}
+    return `You are a friendly AI calendar assistant. 
 
-${eventsContext}
+CURRENT CONTEXT:
+- Current time: ${currentTime}
+- Today is: ${currentDay}
+- ${eventsContext}
 
-Your capabilities:
-1. Have natural conversations about anything
-2. Help create calendar events from natural language
-3. Provide scheduling advice and time management tips
+IMPORTANT: When users specify days of the week (Monday, Tuesday, Wednesday, etc.), you must handle them correctly:
+- For "next Monday" or "this Monday" or just "Monday", set specific day properties
+- Calculate the correct date for the requested day
+- Don't default everything to "today"
 
 When a user wants to create a calendar event, respond in this EXACT format:
 EVENT_DETECTED: {
@@ -106,8 +111,26 @@ EVENT_DETECTED: {
   "duration": 60,
   "priority": 2,
   "type": "flexible",
-  "description": "Optional description"
+  "description": "Optional description",
+  "fixedTime": "2:00 PM",
+  "dayOfWeek": 3
 }
+
+CRITICAL RULES FOR DATES:
+- If user says "Wednesday", "next Wednesday", or "this Wednesday": set "dayOfWeek": 3
+- If user says "Monday": set "dayOfWeek": 1  
+- If user says "Tuesday": set "dayOfWeek": 2
+- If user says "Thursday": set "dayOfWeek": 4
+- If user says "Friday": set "dayOfWeek": 5
+- If user says "Saturday": set "dayOfWeek": 6
+- If user says "Sunday": set "dayOfWeek": 0
+- If user specifies time like "2 PM" or "2:00 PM", set "fixedTime"
+- dayOfWeek: 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
+
+EXAMPLES:
+- "Schedule meeting Wednesday at 2 PM" → dayOfWeek: 3, fixedTime: "2:00 PM"
+- "Add study session Thursday morning" → dayOfWeek: 4, fixedTime: "9:00 AM"
+- "Meeting tomorrow" → use scheduledTime instead of dayOfWeek
 
 Priority levels: 1=High, 2=Medium, 3=Low
 Types: "flexible", "fixed", "mandatory"

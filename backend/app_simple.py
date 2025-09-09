@@ -109,40 +109,34 @@ def optimize_schedule():
         event_copy = event.copy()
         event_copy['isScheduled'] = True
         
-        # Parse fixed time if it's a string (from schedule upload)
-        if event.get('fixedTime') and isinstance(event['fixedTime'], str):
-            time_match = re.search(r'(\d{1,2}):(\d{2})\s*(AM|PM)?', event['fixedTime'], re.IGNORECASE)
-            if time_match:
-                hours, minutes, ampm = time_match.groups()
-                hour24 = int(hours)
-                
-                # Convert to 24-hour format
-                if ampm and ampm.upper() == 'PM' and hour24 != 12:
-                    hour24 += 12
-                elif ampm and ampm.upper() == 'AM' and hour24 == 12:
-                    hour24 = 0
-                
-                # Create scheduled time for the correct day of the week
-                # Start with the beginning of the current week (Monday)
-                today = datetime.now()
-                start_of_week = today - timedelta(days=today.weekday())  # Monday of current week
-                schedule_time = start_of_week.replace(hour=hour24, minute=int(minutes), second=0, microsecond=0)
-                
-                # If event has dayOfWeek, schedule for that day of the current week
-                if event.get('dayOfWeek') is not None:
-                    target_day = event['dayOfWeek']
+        print(f"🔍 Processing fixed event: {event_copy.get('title', 'Unknown')}")
+        print(f"   dayOfWeek: {event_copy.get('dayOfWeek')}")
+        print(f"   fixedTime: {event_copy.get('fixedTime')}")
+        print(f"   type: {event_copy.get('type')}")
+        
+        # For recurring class events (with dayOfWeek + fixedTime), DON'T set scheduledTime
+        # The calendar handles these as recurring events using dayOfWeek and fixedTime
+        if event.get('dayOfWeek') is not None and event.get('fixedTime'):
+            print(f"   ✅ Keeping as recurring event (no scheduledTime set)")
+            # Just mark as scheduled but keep dayOfWeek + fixedTime for recurring display
+            pass
+        else:
+            # For other fixed events (without dayOfWeek), set a specific scheduledTime
+            if event.get('fixedTime') and isinstance(event['fixedTime'], str) and event.get('dayOfWeek') is None:
+                time_match = re.search(r'(\d{1,2}):(\d{2})\s*(AM|PM)?', event['fixedTime'], re.IGNORECASE)
+                if time_match:
+                    hours, minutes, ampm = time_match.groups()
+                    hour24 = int(hours)
                     
-                    # Convert Sunday=0 to Monday=0 system (target_day - 1, but handle Sunday specially)
-                    if target_day == 0:  # Sunday
-                        python_target_day = 6
-                    else:
-                        python_target_day = target_day - 1
+                    # Convert to 24-hour format
+                    if ampm and ampm.upper() == 'PM' and hour24 != 12:
+                        hour24 += 12
+                    elif ampm and ampm.upper() == 'AM' and hour24 == 12:
+                        hour24 = 0
                     
-                    # Schedule for the specific day of the current week
-                    schedule_time = start_of_week + timedelta(days=python_target_day)
-                    schedule_time = schedule_time.replace(hour=hour24, minute=int(minutes), second=0, microsecond=0)
-                
-                event_copy['scheduledTime'] = schedule_time.isoformat()
+                    # Set scheduled time for today
+                    schedule_time = datetime.now().replace(hour=hour24, minute=int(minutes), second=0, microsecond=0)
+                    event_copy['scheduledTime'] = schedule_time.isoformat()
         
         # Update the original event in the events list
         for i, original_event in enumerate(events):
