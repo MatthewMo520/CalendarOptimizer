@@ -23,13 +23,35 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, conflicts, isLoadin
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(currentWeekStart, i));
   const hours = Array.from({ length: 12 }, (_, i) => i + 8); // 8 AM to 7 PM
 
+  // Helper function to extract dayOfWeek from event title if missing
+  const getDayOfWeekFromTitle = (title: string): number | undefined => {
+    const titleUpper = title.toUpperCase();
+    if (titleUpper.includes('(SUNDAY)')) return 0;
+    if (titleUpper.includes('(MONDAY)')) return 1;
+    if (titleUpper.includes('(TUESDAY)')) return 2;
+    if (titleUpper.includes('(WEDNESDAY)')) return 3;
+    if (titleUpper.includes('(THURSDAY)')) return 4;
+    if (titleUpper.includes('(FRIDAY)')) return 5;
+    if (titleUpper.includes('(SATURDAY)')) return 6;
+    return undefined;
+  };
+
   const getEventsForTimeSlot = (day: Date, hour: number) => {
     return events.filter(event => {
       // Debug: Log every event we're checking
       console.log(`🔍 CHECKING EVENT: "${event.title}" for ${format(day, 'EEEE')} ${hour}:00`);
+      
+      // Try to get dayOfWeek from event data, or extract from title as fallback
+      let eventDayOfWeek = event.dayOfWeek;
+      if (eventDayOfWeek === undefined) {
+        eventDayOfWeek = getDayOfWeekFromTitle(event.title);
+        console.log(`   🔄 Extracted dayOfWeek from title: ${eventDayOfWeek}`);
+      }
+      
       console.log(`   📊 Event data:`, {
         hasScheduledTime: !!event.scheduledTime,
         hasDayOfWeek: event.dayOfWeek !== undefined,
+        extractedDayOfWeek: eventDayOfWeek,
         hasFixedTime: !!event.fixedTime,
         scheduledTime: event.scheduledTime,
         dayOfWeek: event.dayOfWeek,
@@ -38,16 +60,16 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, conflicts, isLoadin
         isScheduled: event.isScheduled
       });
       
-      if (!event.scheduledTime && !event.dayOfWeek) {
+      if (!event.scheduledTime && eventDayOfWeek === undefined) {
         console.log(`   ❌ Skipping - no scheduledTime and no dayOfWeek`);
         return false;
       }
       
       // PRIORITY: Handle recurring events FIRST (classes with dayOfWeek and fixedTime)
       // These should use dayOfWeek logic even if they have scheduledTime
-      if (event.dayOfWeek !== undefined && event.fixedTime) {
+      if (eventDayOfWeek !== undefined && event.fixedTime) {
         const dayOfWeek = day.getDay();
-        const targetDay = event.dayOfWeek;
+        const targetDay = eventDayOfWeek;
         
         console.log(`🔍 Recurring event check - "${event.title}": Current day ${format(day, 'EEEE')} (${dayOfWeek}) vs Target day ${targetDay}`);
         
@@ -76,7 +98,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, conflicts, isLoadin
       }
       
       // Handle scheduled events (only if NO dayOfWeek is set)
-      if (event.scheduledTime && event.dayOfWeek === undefined) {
+      // Note: If dayOfWeek exists, ignore scheduledTime as it may be incorrect
+      if (event.scheduledTime && eventDayOfWeek === undefined) {
         const eventDate = parseISO(event.scheduledTime);
         const eventHour = eventDate.getHours();
         const eventEndHour = eventHour + Math.ceil(event.duration / 60);
@@ -95,7 +118,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, conflicts, isLoadin
   };
 
   const getEventPosition = (event: Event) => {
-    if (event.fixedTime && event.dayOfWeek !== undefined) {
+    const eventDayOfWeek = event.dayOfWeek ?? getDayOfWeekFromTitle(event.title);
+    
+    if (event.fixedTime && eventDayOfWeek !== undefined) {
       // Parse fixed time to get minutes
       const timeMatch = event.fixedTime.match(/(\d{1,2}):(\d{2})/i);
       if (timeMatch) {
@@ -132,7 +157,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, conflicts, isLoadin
   };
 
   const formatEventTime = (event: Event) => {
-    if (event.fixedTime && event.dayOfWeek !== undefined) {
+    const eventDayOfWeek = event.dayOfWeek ?? getDayOfWeekFromTitle(event.title);
+    
+    if (event.fixedTime && eventDayOfWeek !== undefined) {
       // For recurring events, show the fixed time
       return event.fixedTime;
     }
@@ -265,7 +292,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, conflicts, isLoadin
                         }
                         
                         // For recurring events, show in the correct hour based on fixedTime
-                        if (event.dayOfWeek !== undefined && event.fixedTime) {
+                        const eventDayOfWeek = event.dayOfWeek ?? getDayOfWeekFromTitle(event.title);
+                        if (eventDayOfWeek !== undefined && event.fixedTime) {
                           const timeMatch = event.fixedTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
                           if (timeMatch) {
                             let [, hours, minutes, ampm] = timeMatch;

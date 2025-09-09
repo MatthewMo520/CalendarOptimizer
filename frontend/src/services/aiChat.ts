@@ -9,7 +9,7 @@ interface AIResponse {
 
 class AIChatService {
   private apiKey: string | null = null;
-  private baseUrl = 'https://generativelanguage.googleapis.com/v1beta';
+  private baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models';
 
   constructor() {
     // Check for Google Gemini API key
@@ -44,7 +44,7 @@ class AIChatService {
       const systemPrompt = this.buildSystemPrompt(currentEvents);
       const fullPrompt = `${systemPrompt}\n\nUser: ${message}`;
       
-      const response = await fetch(`${this.baseUrl}/models/gemini-1.5-flash-latest:generateContent?key=${this.apiKey}`, {
+      const response = await fetch(`${this.baseUrl}/gemini-1.5-flash:generateContent?key=${this.apiKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

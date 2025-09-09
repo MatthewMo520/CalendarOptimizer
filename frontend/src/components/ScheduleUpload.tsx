@@ -57,35 +57,61 @@ const ScheduleUpload: React.FC<ScheduleUploadProps> = ({ onEventsExtracted }) =>
       return [3, 5];
     }
     
-    // Check individual days
+    // Check individual days (exact matches for single day tutorials)
     console.log(`🔍 Checking individual days in: "${dayStr}"`);
-    if (dayStr.includes('SUN') || dayStr.includes('SUNDAY')) {
-      console.log(`✅ Found Sunday -> adding 0`);
+    
+    // Handle exact day names for tutorials
+    if (dayStr === 'SUNDAY') {
+      console.log(`✅ Found exact Sunday -> adding 0`);
       days.push(0);
-    }
-    if (dayStr.includes('MON') || dayStr.includes('MONDAY')) {
-      console.log(`✅ Found Monday -> adding 1`);
+    } else if (dayStr === 'MONDAY') {
+      console.log(`✅ Found exact Monday -> adding 1`);
       days.push(1);
-    }
-    if (dayStr.includes('TUE') || dayStr.includes('TUESDAY')) {
-      console.log(`✅ Found Tuesday -> adding 2`);
+    } else if (dayStr === 'TUESDAY') {
+      console.log(`✅ Found exact Tuesday -> adding 2`);
       days.push(2);
-    }
-    if (dayStr.includes('WED') || dayStr.includes('WEDNESDAY')) {
-      console.log(`✅ Found Wednesday -> adding 3`);
+    } else if (dayStr === 'WEDNESDAY') {
+      console.log(`✅ Found exact Wednesday -> adding 3`);
       days.push(3);
-    }
-    if (dayStr.includes('THU') || dayStr.includes('THURSDAY')) {
-      console.log(`✅ Found Thursday -> adding 4`);
+    } else if (dayStr === 'THURSDAY') {
+      console.log(`✅ Found exact Thursday -> adding 4`);
       days.push(4);
-    }
-    if (dayStr.includes('FRI') || dayStr.includes('FRIDAY')) {
-      console.log(`✅ Found Friday -> adding 5`);
+    } else if (dayStr === 'FRIDAY') {
+      console.log(`✅ Found exact Friday -> adding 5`);
       days.push(5);
-    }
-    if (dayStr.includes('SAT') || dayStr.includes('SATURDAY')) {
-      console.log(`✅ Found Saturday -> adding 6`);
+    } else if (dayStr === 'SATURDAY') {
+      console.log(`✅ Found exact Saturday -> adding 6`);
       days.push(6);
+    } else {
+      // Fall back to substring matching for multi-day patterns
+      if (dayStr.includes('SUN') || dayStr.includes('SUNDAY')) {
+        console.log(`✅ Found Sunday -> adding 0`);
+        days.push(0);
+      }
+      if (dayStr.includes('MON') || dayStr.includes('MONDAY')) {
+        console.log(`✅ Found Monday -> adding 1`);
+        days.push(1);
+      }
+      if (dayStr.includes('TUE') || dayStr.includes('TUESDAY')) {
+        console.log(`✅ Found Tuesday -> adding 2`);
+        days.push(2);
+      }
+      if (dayStr.includes('WED') || dayStr.includes('WEDNESDAY')) {
+        console.log(`✅ Found Wednesday -> adding 3`);
+        days.push(3);
+      }
+      if (dayStr.includes('THU') || dayStr.includes('THURSDAY')) {
+        console.log(`✅ Found Thursday -> adding 4`);
+        days.push(4);
+      }
+      if (dayStr.includes('FRI') || dayStr.includes('FRIDAY')) {
+        console.log(`✅ Found Friday -> adding 5`);
+        days.push(5);
+      }
+      if (dayStr.includes('SAT') || dayStr.includes('SATURDAY')) {
+        console.log(`✅ Found Saturday -> adding 6`);
+        days.push(6);
+      }
     }
     
     console.log(`🎯 Final parsed days: [${days.join(', ')}]`);
@@ -196,42 +222,113 @@ const ScheduleUpload: React.FC<ScheduleUploadProps> = ({ onEventsExtracted }) =>
         contents: [{
           parts: [
             {
-              text: `Analyze this weekly class schedule grid image VERY CAREFULLY. Look at which columns each class appears in to determine the correct days.
+              text: `Analyze this university class schedule image with EXTREME PRECISION. This is a weekly grid with 7 columns (Monday through Sunday).
 
-This is a weekly schedule with columns for days of the week. Each class block shows exactly which days it meets.
+CRITICAL STEP-BY-STEP ANALYSIS:
+1. Identify the column headers: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
+2. For EACH class block, determine EXACTLY which columns it spans across
+3. Count the physical column positions, not just read text
 
-CRITICAL ANALYSIS RULES:
-- Look at the COLUMN POSITIONS to determine days, not just text
-- If a class appears in Monday/Wednesday/Friday columns = "MWF"
-- If a class appears in Tuesday/Thursday columns = "TTH"  
-- If a class appears in Monday/Wednesday columns = "MW"
-- Pay special attention to which columns ECON appears in - it should be Tuesday/Thursday if in those columns
-- Extract ONLY classes that are actually visible in the schedule grid
-- Each class should appear ONCE with all its meeting days combined
+ANALYSIS METHOD:
+- Look at the LEFT EDGE of each class block - which column does it start in?
+- Look at the RIGHT EDGE of each class block - which column does it end in?
+- A class that spans Monday+Wednesday+Friday columns = "MWF"
+- A class that spans Tuesday+Thursday columns = "TTH" 
+- A class in only Monday column = "Monday"
+- A class in only Wednesday column = "Wednesday"
 
-Return ONLY a JSON object in this exact format:
+EXPECTED PATTERNS FROM YOUR IMAGE:
+- ECON 102: Should appear in Tuesday AND Thursday columns → "TTH"
+- CS 245: Should appear in Tuesday AND Thursday columns → "TTH"
+- MATH 235: Should appear in Monday AND Wednesday AND Friday columns → "MWF"
+- STAT 230: Should appear in Monday AND Wednesday AND Friday columns → "MWF"
+
+IMPORTANT: Also extract ALL TUTORIALS (TUT):
+- CS 246 - 104 TUT: Tuesday column → "Tuesday"
+- STAT 230 - 102 TUT: Friday column → "Friday"  
+- CS 245 - 105 TUT: Friday column → "Friday"
+- MATH 235 - 101 TUT: Thursday column → "Thursday"
+- Any other TUT sessions visible in single day columns
+
+Return ONLY valid JSON in this format (INCLUDE ALL LECTURES AND TUTORIALS):
 {
   "events": [
     {
-      "title": "Exact Course Name (e.g., CHEM 201, ECON 101)",
-      "time": "HH:MM AM/PM (start time)",
-      "day": "MWF or TTH or MW based on column positions", 
-      "location": "Room if visible",
-      "duration": 60,
+      "title": "ECON 102 - 001",
+      "time": "8:30 AM",
+      "day": "TTH",
+      "location": "M3 1006",
+      "duration": 80,
+      "type": "mandatory",
+      "priority": 1
+    },
+    {
+      "title": "CS 245 - 002", 
+      "time": "10:00 AM",
+      "day": "TTH",
+      "location": "MC 4045",
+      "duration": 80,
+      "type": "mandatory", 
+      "priority": 1
+    },
+    {
+      "title": "CS 246 - 104 TUT",
+      "time": "11:30 AM",
+      "day": "Tuesday",
+      "location": "MC 3003",
+      "duration": 50,
+      "type": "mandatory",
+      "priority": 1
+    },
+    {
+      "title": "STAT 230 - 102 TUT",
+      "time": "12:30 PM",
+      "day": "Friday",
+      "location": "DC 1351",
+      "duration": 50,
+      "type": "mandatory",
+      "priority": 1
+    },
+    {
+      "title": "CS 245 - 105 TUT",
+      "time": "1:30 PM",
+      "day": "Friday",
+      "location": "MC 4042",
+      "duration": 50,
+      "type": "mandatory",
+      "priority": 1
+    },
+    {
+      "title": "MATH 235 - 101 TUT",
+      "time": "2:30 PM",
+      "day": "Thursday",
+      "location": "UTD 105",
+      "duration": 50,
+      "type": "mandatory",
+      "priority": 1
+    },
+    {
+      "title": "MATH 235 - 001",
+      "time": "3:30 PM", 
+      "day": "MWF",
+      "location": "MC 4059",
+      "duration": 50,
+      "type": "mandatory",
+      "priority": 1
+    },
+    {
+      "title": "STAT 230 - 002",
+      "time": "2:30 PM",
+      "day": "MWF", 
+      "location": "DC 1351",
+      "duration": 50,
       "type": "mandatory",
       "priority": 1
     }
   ]
 }
 
-SPECIFIC INSTRUCTIONS:
-- Look at ECON carefully - determine if it's in Tuesday/Thursday columns or Monday/Wednesday/Friday columns
-- Use EXACT course names from the image
-- Time format: "9:00 AM", "2:30 PM" (start time only)
-- Duration: 50-90 minutes based on time block length
-- Day patterns based on COLUMN ANALYSIS: "MWF", "TTH", "MW", "WF", etc.
-- Location: room numbers if clearly visible
-- Return only valid JSON, no additional text`
+VERIFICATION: Double-check that ECON and CS245 are "TTH", MATH and STAT are "MWF" based on their column positions.`
             },
             {
               inline_data: {

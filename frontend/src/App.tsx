@@ -57,6 +57,7 @@ function AppContent() {
         earliestStart: eventData.earliestStart,
         latestStart: eventData.latestStart,
         fixedTime: eventData.fixedTime,
+        dayOfWeek: eventData.dayOfWeek,
       });
 
       if (newEvent) {
@@ -101,6 +102,7 @@ function AppContent() {
             earliestStart: eventData.earliestStart,
             latestStart: eventData.latestStart,
             fixedTime: eventData.fixedTime,
+            dayOfWeek: eventData.dayOfWeek,
           });
 
           if (newEvent) {
@@ -163,60 +165,112 @@ function AppContent() {
   };
 
   const localOptimize = () => {
-    // Enhanced local optimization logic
+    console.log('🎯 OPTIMIZATION STARTING');
+    console.log('📋 All events:', events);
+    
+    // Enhanced local optimization logic with multi-day distribution
     const optimized = [...events].sort((a, b) => a.priority - b.priority); // Sort by priority (1=highest)
-    let currentTime = new Date();
-    currentTime.setHours(9, 0, 0, 0); // Start at 9 AM
-
-    const scheduledEvents = optimized.map(event => {
-      // Handle events with fixed times (from schedule upload)
-      if (event.type === 'mandatory' || event.fixedTime) {
-        const scheduledEvent = { 
-          ...event, 
-          isScheduled: true 
-        };
-
-        // For recurring class events (with dayOfWeek + fixedTime), DON'T set scheduledTime
-        // The calendar handles these as recurring events using dayOfWeek and fixedTime
-        if (event.dayOfWeek !== undefined && event.fixedTime) {
-          // Just mark as scheduled but keep dayOfWeek + fixedTime for recurring display
-          return scheduledEvent;
-        }
-
-        // For other fixed events (without dayOfWeek), set a specific scheduledTime
-        if (event.fixedTime && typeof event.fixedTime === 'string' && event.dayOfWeek === undefined) {
-          // Parse time like "2:30 PM" or "14:30"
-          const timeMatch = event.fixedTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
-          if (timeMatch) {
-            let [, hours, minutes, ampm] = timeMatch;
-            let hour24 = parseInt(hours);
-            
-            // Convert to 24-hour format if needed
-            if (ampm && ampm.toUpperCase() === 'PM' && hour24 !== 12) {
-              hour24 += 12;
-            } else if (ampm && ampm.toUpperCase() === 'AM' && hour24 === 12) {
-              hour24 = 0;
-            }
-
-            // Set scheduled time for today
-            const scheduleDate = new Date();
-            scheduleDate.setHours(hour24, parseInt(minutes), 0, 0);
-            scheduledEvent.scheduledTime = scheduleDate.toISOString();
-          }
-        }
-
-        return scheduledEvent;
-      }
-
-      // Handle flexible events
+    
+    // Separate fixed/recurring events from flexible events
+    const fixedEvents = optimized.filter(event => event.type === 'mandatory' || event.fixedTime);
+    const flexibleEvents = optimized.filter(event => event.type === 'flexible' && !event.fixedTime);
+    
+    console.log('📌 Fixed events:', fixedEvents);
+    console.log('🔄 Flexible events:', flexibleEvents);
+    
+    const scheduledEvents: Event[] = [];
+    
+    // Handle fixed/recurring events first
+    fixedEvents.forEach(event => {
       const scheduledEvent = { 
         ...event, 
-        scheduledTime: currentTime.toISOString(),
         isScheduled: true 
       };
+
+      // For recurring class events (with dayOfWeek + fixedTime), DON'T set scheduledTime
+      if (event.dayOfWeek !== undefined && event.fixedTime) {
+        scheduledEvents.push({ ...event, isScheduled: true, scheduledTime: undefined });
+        return;
+      }
+
+      // For other fixed events (without dayOfWeek), set a specific scheduledTime
+      if (event.fixedTime && typeof event.fixedTime === 'string' && event.dayOfWeek === undefined) {
+        const timeMatch = event.fixedTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+        if (timeMatch) {
+          let [, hours, minutes, ampm] = timeMatch;
+          let hour24 = parseInt(hours);
+          
+          if (ampm && ampm.toUpperCase() === 'PM' && hour24 !== 12) {
+            hour24 += 12;
+          } else if (ampm && ampm.toUpperCase() === 'AM' && hour24 === 12) {
+            hour24 = 0;
+          }
+
+          const scheduleDate = new Date();
+          scheduleDate.setHours(hour24, parseInt(minutes), 0, 0);
+          scheduledEvent.scheduledTime = scheduleDate.toISOString();
+        }
+      }
+
+      scheduledEvents.push(scheduledEvent);
+    });
+    
+    // Handle flexible events - distribute across multiple days
+    let currentDay = new Date();
+    let currentHour = 9; // Start at 9 AM
+    const workDayStart = 9; // 9 AM
+    const workDayEnd = 18; // 6 PM
+    const maxHoursPerDay = workDayEnd - workDayStart;
+    
+    console.log('📅 Starting flexible event scheduling on:', currentDay.toDateString(), 'at hour:', currentHour);
+    
+    flexibleEvents.forEach((event, index) => {
+      console.log(`\n🔄 Processing flexible event ${index + 1}:`, event.title);
+      const eventDurationHours = event.duration / 60;
+      console.log(`   ⏱️ Duration: ${eventDurationHours} hours`);
+      console.log(`   📅 Current day: ${currentDay.toDateString()}, hour: ${currentHour}`);
       
-      currentTime = new Date(currentTime.getTime() + event.duration * 60000);
-      return scheduledEvent;
+      // Check if event fits in current day
+      if (currentHour + eventDurationHours > workDayEnd) {
+        console.log(`   ⚠️ Event doesn't fit today, moving to next day`);
+        // Move to next day
+        currentDay = new Date(currentDay.getTime() + 24 * 60 * 60 * 1000);
+        currentHour = workDayStart;
+        
+        // Skip weekends for work events
+        while (currentDay.getDay() === 0 || currentDay.getDay() === 6) {
+          console.log(`   ⏭️ Skipping weekend: ${currentDay.toDateString()}`);
+          currentDay = new Date(currentDay.getTime() + 24 * 60 * 60 * 1000);
+        }
+        console.log(`   ✅ Moved to: ${currentDay.toDateString()}, hour: ${currentHour}`);
+      }
+      
+      // Schedule the event
+      const scheduleTime = new Date(currentDay);
+      scheduleTime.setHours(currentHour, 0, 0, 0);
+      
+      const scheduledEvent = {
+        ...event,
+        scheduledTime: scheduleTime.toISOString(),
+        isScheduled: true
+      };
+      
+      console.log(`   📍 Scheduled "${event.title}" for: ${scheduleTime.toLocaleString()}`);
+      scheduledEvents.push(scheduledEvent);
+      
+      // Advance time for next event (with some buffer)
+      currentHour += Math.max(eventDurationHours, 0.5); // At least 30 min between events
+      console.log(`   ⏰ Next event will start at hour: ${currentHour}`);
+    });
+
+    console.log('\n🎉 OPTIMIZATION COMPLETE');
+    console.log('📊 Final scheduled events:', scheduledEvents);
+    console.log('📈 Summary:', {
+      total: scheduledEvents.length,
+      fixed: scheduledEvents.filter(e => e.fixedTime || e.type === 'mandatory').length,
+      flexible: scheduledEvents.filter(e => e.type === 'flexible' && !e.fixedTime).length,
+      withDayOfWeek: scheduledEvents.filter(e => e.dayOfWeek !== undefined).length,
+      withScheduledTime: scheduledEvents.filter(e => e.scheduledTime).length
     });
 
     setEvents(scheduledEvents);

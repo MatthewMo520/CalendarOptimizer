@@ -29,6 +29,7 @@ export interface CreateEventRequest {
   earliestStart?: string;
   latestStart?: string;
   fixedTime?: string;
+  dayOfWeek?: number; // 0=Sunday, 1=Monday, etc.
   recurringPattern?: {
     type: 'daily' | 'weekly' | 'monthly';
     days?: number[];
