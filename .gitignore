@@ -80,4 +80,9 @@ Thumbs.db
 # Legacy files
 index.html
 app.js
-main.py
+main.py# Claude Code files
+.claude/
+claude_*
+
+# Legacy files  
+legacy/

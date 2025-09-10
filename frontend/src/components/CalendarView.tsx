@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { format, startOfWeek, addDays, isSameDay, parseISO, addWeeks, subWeeks } from 'date-fns';
 import { Clock, MapPin, AlertTriangle, ChevronLeft, ChevronRight, Navigation } from 'lucide-react';
 import { Event } from '../types/Event';
@@ -87,7 +87,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, conflicts, isLoadin
         // Parse the fixed time to get hour
         const timeMatch = event.fixedTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
         if (timeMatch) {
-          let [, hours, minutes, ampm] = timeMatch;
+          let [, hours, , ampm] = timeMatch;
           let hour24 = parseInt(hours);
           
           if (ampm && ampm.toUpperCase() === 'PM' && hour24 !== 12) {
@@ -102,12 +102,13 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, conflicts, isLoadin
         return false;
       }
       
-      // Handle scheduled events (only if NO dayOfWeek is set)
-      // Note: If dayOfWeek exists, ignore scheduledTime as it may be incorrect
-      if (event.scheduledTime && eventDayOfWeek === undefined) {
+      // Handle scheduled events (works for both events with and without dayOfWeek)
+      if (event.scheduledTime) {
         const eventDate = parseISO(event.scheduledTime);
         const eventHour = eventDate.getHours();
         const eventEndHour = eventHour + Math.ceil(event.duration / 60);
+        
+        console.log(`🔍 Scheduled event check - "${event.title}": Event date ${eventDate.toISOString()} vs Current day ${day.toISOString()}`);
         
         return isSameDay(eventDate, day) && eventHour <= hour && hour < eventEndHour;
       }
@@ -362,7 +363,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, conflicts, isLoadin
                         if (eventDayOfWeek !== undefined && event.fixedTime) {
                           const timeMatch = event.fixedTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
                           if (timeMatch) {
-                            let [, hours, minutes, ampm] = timeMatch;
+                            let [, hours, , ampm] = timeMatch;
                             let hour24 = parseInt(hours);
                             
                             if (ampm && ampm.toUpperCase() === 'PM' && hour24 !== 12) {

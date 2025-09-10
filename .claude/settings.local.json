@@ -9,7 +9,9 @@
       "Bash(npm start)",
       "Bash(npm run build:*)",
       "Bash(taskkill:*)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

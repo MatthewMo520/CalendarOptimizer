@@ -32,13 +32,18 @@ function AppContent() {
   const loadInitialData = async () => {
     setIsLoading(true);
     try {
+      console.log('🔄 Loading initial data from API...');
       const eventsData = await ApiService.getEvents();
+      console.log('📋 Loaded events from API:', eventsData);
       setEvents(eventsData);
       
       const conflicts = await ApiService.getConflicts();
+      console.log('⚠️ Loaded conflicts from API:', conflicts);
       setCalendarData({ events: eventsData, conflicts });
+      
+      console.log('✅ Initial data loaded successfully');
     } catch (error) {
-      console.error('Failed to load initial data:', error);
+      console.error('❌ Failed to load initial data:', error);
     } finally {
       setIsLoading(false);
     }
@@ -230,7 +235,7 @@ function AppContent() {
           const timeMatch = existingEvent.fixedTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
           if (!timeMatch) return false;
           
-          let [, hours, minutes, ampm] = timeMatch;
+          let [, hours, , ampm] = timeMatch;
           let hour24 = parseInt(hours);
           
           if (ampm && ampm.toUpperCase() === 'PM' && hour24 !== 12) {
