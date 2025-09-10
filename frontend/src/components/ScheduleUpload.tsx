@@ -222,19 +222,23 @@ const ScheduleUpload: React.FC<ScheduleUploadProps> = ({ onEventsExtracted }) =>
         contents: [{
           parts: [
             {
-              text: `Look at this class schedule image very carefully. 
+              text: `Look at this university schedule image very carefully. 
 
-First, identify the column headers (days of the week) at the top.
-Then, for each colored class block, tell me exactly which day columns it spans across.
+FIRST: Tell me what you see in the header row - what are the day names from left to right?
 
-For example:
-- If you see a block that spans across the "Tuesday" and "Thursday" columns, that's "TTH"
-- If you see a block that spans across "Monday", "Wednesday", and "Friday" columns, that's "MWF"
-- If you see a block in only the "Wednesday" column, that's "Wednesday"
+SECOND: For each colored course block, tell me:
+- What course it is (e.g. "ECON 102", "CS 245", etc.)
+- What time it shows
+- Which day column(s) it appears under (be very precise - look at the headers above each block)
 
-Look at each class block individually and determine its day pattern based on which columns it occupies.
+THIRD: Based on which day columns each course appears under:
+- If a course appears under the "Tuesday" column AND "Thursday" column → day: "TTH" 
+- If a course appears under "Monday" AND "Wednesday" AND "Friday" columns → day: "MWF"
+- If a course appears under only one column → use that day name (e.g. "Wednesday")
 
-Extract all classes and tutorials. Return only this JSON format:
+Be extremely careful to read the day headers correctly. Look at EACH course block and identify which specific day column headers it sits under.
+
+Return JSON format:
 {
   "events": [
     {
