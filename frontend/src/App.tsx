@@ -215,52 +215,109 @@ function AppContent() {
       scheduledEvents.push(scheduledEvent);
     });
     
-    // Handle flexible events - distribute across multiple days
-    let currentDay = new Date();
-    let currentHour = 9; // Start at 9 AM
-    const workDayStart = 9; // 9 AM
-    const workDayEnd = 18; // 6 PM
-    const maxHoursPerDay = workDayEnd - workDayStart;
-    
-    console.log('📅 Starting flexible event scheduling on:', currentDay.toDateString(), 'at hour:', currentHour);
-    
+    // Helper function to check if a time slot conflicts with fixed events
+    const hasConflict = (checkDay: Date, checkHour: number, durationHours: number) => {
+      const checkDayOfWeek = checkDay.getDay();
+      const checkEndHour = checkHour + durationHours;
+      
+      return scheduledEvents.some(existingEvent => {
+        // Check recurring events (classes)
+        if (existingEvent.dayOfWeek !== undefined && existingEvent.fixedTime) {
+          // Only check if it's the same day of week
+          if (existingEvent.dayOfWeek !== checkDayOfWeek) return false;
+          
+          // Parse the fixed time
+          const timeMatch = existingEvent.fixedTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+          if (!timeMatch) return false;
+          
+          let [, hours, minutes, ampm] = timeMatch;
+          let hour24 = parseInt(hours);
+          
+          if (ampm && ampm.toUpperCase() === 'PM' && hour24 !== 12) {
+            hour24 += 12;
+          } else if (ampm && ampm.toUpperCase() === 'AM' && hour24 === 12) {
+            hour24 = 0;
+          }
+          
+          const existingEndHour = hour24 + (existingEvent.duration / 60);
+          
+          // Check for time overlap
+          const overlap = checkHour < existingEndHour && checkEndHour > hour24;
+          if (overlap) {
+            console.log(`   ⚠️ Conflict with ${existingEvent.title} at ${existingEvent.fixedTime}`);
+            return true;
+          }
+        }
+        
+        // Check scheduled events on the same day
+        if (existingEvent.scheduledTime) {
+          const existingDate = new Date(existingEvent.scheduledTime);
+          const existingHour = existingDate.getHours();
+          const existingEndHour = existingHour + (existingEvent.duration / 60);
+          
+          // Same day check
+          if (existingDate.toDateString() === checkDay.toDateString()) {
+            const overlap = checkHour < existingEndHour && checkEndHour > existingHour;
+            if (overlap) {
+              console.log(`   ⚠️ Conflict with ${existingEvent.title} at ${existingDate.toLocaleTimeString()}`);
+              return true;
+            }
+          }
+        }
+        
+        return false;
+      });
+    };
+
+    // Handle flexible events - find available time slots
     flexibleEvents.forEach((event, index) => {
       console.log(`\n🔄 Processing flexible event ${index + 1}:`, event.title);
       const eventDurationHours = event.duration / 60;
       console.log(`   ⏱️ Duration: ${eventDurationHours} hours`);
-      console.log(`   📅 Current day: ${currentDay.toDateString()}, hour: ${currentHour}`);
       
-      // Check if event fits in current day
-      if (currentHour + eventDurationHours > workDayEnd) {
-        console.log(`   ⚠️ Event doesn't fit today, moving to next day`);
-        // Move to next day
-        currentDay = new Date(currentDay.getTime() + 24 * 60 * 60 * 1000);
-        currentHour = workDayStart;
+      let scheduled = false;
+      let searchDay = new Date();
+      const workDayStart = 8; // 8 AM
+      const workDayEnd = 20; // 8 PM
+      
+      // Search for up to 14 days
+      for (let dayOffset = 0; dayOffset < 14 && !scheduled; dayOffset++) {
+        const tryDay = new Date(searchDay.getTime() + dayOffset * 24 * 60 * 60 * 1000);
         
-        // Skip weekends for work events
-        while (currentDay.getDay() === 0 || currentDay.getDay() === 6) {
-          console.log(`   ⏭️ Skipping weekend: ${currentDay.toDateString()}`);
-          currentDay = new Date(currentDay.getTime() + 24 * 60 * 60 * 1000);
+        // Skip weekends
+        if (tryDay.getDay() === 0 || tryDay.getDay() === 6) {
+          console.log(`   ⏭️ Skipping weekend: ${tryDay.toDateString()}`);
+          continue;
         }
-        console.log(`   ✅ Moved to: ${currentDay.toDateString()}, hour: ${currentHour}`);
+        
+        console.log(`   📅 Trying day: ${tryDay.toDateString()}`);
+        
+        // Try each hour of the day
+        for (let hour = workDayStart; hour <= workDayEnd - eventDurationHours; hour += 0.5) {
+          if (!hasConflict(tryDay, hour, eventDurationHours)) {
+            // Found a free slot!
+            const scheduleTime = new Date(tryDay);
+            scheduleTime.setHours(Math.floor(hour), (hour % 1) * 60, 0, 0);
+            
+            const scheduledEvent = {
+              ...event,
+              scheduledTime: scheduleTime.toISOString(),
+              isScheduled: true
+            };
+            
+            console.log(`   ✅ Scheduled "${event.title}" for: ${scheduleTime.toLocaleString()}`);
+            scheduledEvents.push(scheduledEvent);
+            scheduled = true;
+            break;
+          }
+        }
       }
       
-      // Schedule the event
-      const scheduleTime = new Date(currentDay);
-      scheduleTime.setHours(currentHour, 0, 0, 0);
-      
-      const scheduledEvent = {
-        ...event,
-        scheduledTime: scheduleTime.toISOString(),
-        isScheduled: true
-      };
-      
-      console.log(`   📍 Scheduled "${event.title}" for: ${scheduleTime.toLocaleString()}`);
-      scheduledEvents.push(scheduledEvent);
-      
-      // Advance time for next event (with some buffer)
-      currentHour += Math.max(eventDurationHours, 0.5); // At least 30 min between events
-      console.log(`   ⏰ Next event will start at hour: ${currentHour}`);
+      if (!scheduled) {
+        console.log(`   ❌ Could not find available slot for "${event.title}"`);
+        // Add as unscheduled
+        scheduledEvents.push({ ...event, isScheduled: false });
+      }
     });
 
     console.log('\n🎉 OPTIMIZATION COMPLETE');
@@ -301,10 +358,10 @@ function AppContent() {
   }> = ({ id, icon, label }) => (
     <button
       onClick={() => setActiveTab(id)}
-      className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
+      className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-colors font-medium ${
         activeTab === id
-          ? 'bg-blue-600 text-white'
-          : 'text-gray-600 hover:bg-gray-100'
+          ? 'bg-indigo-600 text-white shadow-sm'
+          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-700'
       }`}
     >
       {icon}
@@ -319,12 +376,12 @@ function AppContent() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-600 rounded-md">
-                <Calendar className="w-6 h-6 text-white" />
+              <div className="p-2.5 bg-indigo-600 rounded-lg shadow-sm">
+                <Calendar className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-gray-900">Schedule Manager</h1>
-                <p className="text-sm text-gray-600">Intelligent calendar organization system</p>
+                <h1 className="text-2xl font-bold text-gray-900">Academic Scheduler</h1>
+                <p className="text-sm text-gray-600">Smart course schedule management</p>
               </div>
             </div>
 
@@ -345,18 +402,19 @@ function AppContent() {
               <button
                 onClick={handleOptimizeSchedule}
                 disabled={isLoading || events.length === 0}
-                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 font-medium shadow-sm"
               >
                 <BarChart3 className="w-4 h-4" />
-                <span className="hidden sm:block">Optimize</span>
+                <span className="hidden sm:block">Optimize Schedule</span>
               </button>
               
               <button
                 onClick={handleClearSchedule}
                 disabled={isLoading || events.length === 0}
-                className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-5 py-2.5 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium shadow-sm"
               >
-                Clear All
+                <span className="hidden sm:block">Clear All</span>
+                <span className="sm:hidden">Clear</span>
               </button>
             </div>
           </div>
@@ -375,8 +433,11 @@ function AppContent() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Sidebar - Event Form and Schedule Upload */}
           <div className="lg:col-span-1 space-y-6">
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Add New Event</h2>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Clock className="w-5 h-5 text-indigo-600" />
+                Add New Event
+              </h2>
               <EventForm onEventCreate={handleEventCreate} isLoading={isLoading} />
             </div>
             

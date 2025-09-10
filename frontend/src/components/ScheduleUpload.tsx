@@ -324,14 +324,14 @@ Be methodical: examine each colored block one by one, see which day column(s) it
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 bg-purple-600 rounded-md">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="p-2.5 bg-indigo-600 rounded-lg shadow-sm">
           <Image className="w-5 h-5 text-white" />
         </div>
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Schedule Import</h2>
-          <p className="text-sm text-gray-600">Upload class schedule image for automatic parsing</p>
+          <p className="text-sm text-gray-600">Upload class schedule image for AI parsing</p>
         </div>
       </div>
 
@@ -358,9 +358,9 @@ Be methodical: examine each colored block one by one, see which day column(s) it
               <p className="text-sm text-gray-500 mb-4">
                 Supports JPG, PNG, PDF screenshots of schedules
               </p>
-              <label className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer transition-colors">
+              <label className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 cursor-pointer transition-colors font-medium shadow-sm">
                 <Upload className="w-4 h-4" />
-                Select File
+                Select Schedule Image
                 <input
                   type="file"
                   className="hidden"
@@ -423,9 +423,9 @@ Be methodical: examine each colored block one by one, see which day column(s) it
           <div className="flex gap-2">
             <button
               onClick={resetUpload}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-sm"
             >
-              Import Another
+              Import Another Schedule
             </button>
           </div>
         </div>

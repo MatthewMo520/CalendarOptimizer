@@ -112,9 +112,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, conflicts, isLoadin
   };
 
   const getEventHeight = (duration: number) => {
-    const hourHeight = 60; // Base height per hour
-    const height = Math.max((duration / 60) * hourHeight, 40); // Minimum 40px
-    return Math.min(height, 180); // Maximum 3 hours display
+    const hourHeight = 100; // Base height per hour
+    const height = Math.max((duration / 60) * hourHeight, 70); // Minimum 70px
+    return Math.min(height, 300); // Maximum 3 hours display
   };
 
   const getEventPosition = (event: Event) => {
@@ -279,8 +279,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, conflicts, isLoadin
                   return (
                     <div
                       key={dayIndex}
-                      className="relative border-l border-gray-200 min-h-[60px] p-1"
-                      style={{ minHeight: '60px' }}
+                      className="relative border-l border-gray-200 min-h-[100px] p-1"
+                      style={{ minHeight: '100px' }}
                     >
                       {slotEvents.map((event, eventIndex) => {
                         const isConflicted = isEventInConflict(event.title);
@@ -312,28 +312,34 @@ const CalendarView: React.FC<CalendarViewProps> = ({ events, conflicts, isLoadin
                         return (
                           <div
                             key={`${event.id}-${eventIndex}`}
-                            className={`absolute left-1 right-1 rounded-lg p-2 text-xs transition-all duration-200 hover:scale-105 hover:shadow-lg cursor-pointer z-10 ${
+                            className={`absolute left-0.5 right-0.5 rounded-md p-2 text-xs transition-all duration-200 hover:shadow-md cursor-pointer z-10 overflow-hidden ${
                               getPriorityColor(event.priority, event.type)
                             } ${isConflicted ? 'ring-2 ring-red-400 ring-opacity-75' : ''}`}
                             style={{
                               top: `${getEventPosition(event)}px`,
                               height: `${getEventHeight(event.duration)}px`,
+                              minHeight: '60px'
                             }}
-                            title={`${event.title}\n${formatEventTime(event)} - ${event.duration}min\nPriority: ${['', 'Low', 'Medium', 'High'][event.priority]}\nType: ${event.type}`}
+                            title={`${event.title}\n${formatEventTime(event)} - ${event.duration}min\nPriority: ${['', 'Low', 'Medium', 'High'][event.priority]}\nType: ${event.type}${event.location ? '\nLocation: ' + event.location : ''}`}
                           >
-                            <div className="font-medium truncate">
+                            <div className="font-semibold text-sm leading-tight mb-1 break-words" style={{
+                              display: '-webkit-box',
+                              WebkitLineClamp: 3,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden'
+                            }}>
                               {event.title}
-                              {isConflicted && <AlertTriangle className="w-3 h-3 inline ml-1" />}
+                              {isConflicted && <AlertTriangle className="w-3 h-3 inline ml-0.5 flex-shrink-0" />}
                             </div>
-                            <div className="flex items-center gap-1 mt-1 opacity-90">
-                              <Clock className="w-3 h-3" />
-                              <span>{formatEventTime(event)}</span>
-                              <span>({event.duration}m)</span>
+                            <div className="flex items-center gap-1 text-xs opacity-90 flex-wrap mb-1">
+                              <Clock className="w-3 h-3 flex-shrink-0" />
+                              <span className="whitespace-nowrap">{formatEventTime(event)}</span>
+                              <span className="whitespace-nowrap">({event.duration}m)</span>
                             </div>
                             {event.location && (
-                              <div className="flex items-center gap-1 mt-1 opacity-75">
-                                <MapPin className="w-2 h-2" />
-                                <span className="truncate text-xs">{event.location}</span>
+                              <div className="flex items-center gap-1 opacity-80 text-xs">
+                                <MapPin className="w-3 h-3 flex-shrink-0" />
+                                <span className="truncate">{event.location}</span>
                               </div>
                             )}
                           </div>
