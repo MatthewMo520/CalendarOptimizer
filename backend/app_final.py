@@ -10,7 +10,13 @@ from optimizer import ScheduleOptimizer
 # MongoDB setup
 try:
     from pymongo import MongoClient
-    MONGODB_URI = "mongodb+srv://mathmatthewmo_db_user:seJ5MTcp1SroeDu2@cluster0.r0rfnqc.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+    from dotenv import load_dotenv
+    load_dotenv()
+    
+    MONGODB_URI = os.getenv('MONGODB_URI')
+    if not MONGODB_URI:
+        raise Exception("MONGODB_URI not found in environment variables")
+    
     client = MongoClient(MONGODB_URI)
     db = client['calendar_optimizer']
     events_collection = db['events']
