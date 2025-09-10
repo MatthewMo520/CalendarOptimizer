@@ -7,6 +7,23 @@ from event import Event, Priority
 from scheduler import Calendar
 from optimizer import ScheduleOptimizer
 
+# MongoDB setup
+try:
+    from pymongo import MongoClient
+    MONGODB_URI = "mongodb+srv://mathmatthewmo_db_user:seJ5MTcp1SroeDu2@cluster0.r0rfnqc.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+    client = MongoClient(MONGODB_URI)
+    db = client['calendar_optimizer']
+    events_collection = db['events']
+    # Test connection
+    client.admin.command('ping')
+    print("Connected to MongoDB Atlas successfully!")
+    USE_MONGODB = True
+except Exception as e:
+    print(f"MongoDB connection failed: {e}")
+    print("Falling back to file persistence...")
+    USE_MONGODB = False
+    events_collection = None
+
 app = Flask(__name__)
 CORS(app)
 
@@ -14,13 +31,95 @@ CORS(app)
 calendar_instance = None
 optimizer_instance = None
 
-# File for persistence
+# File for persistence fallback
 EVENTS_FILE = 'events_data.json'
 
-def save_events():
-    """Save events to JSON file"""
-    if not calendar_instance or not calendar_instance.events:
-        return
+def save_events_to_mongo():
+    """Save events to MongoDB"""
+    if not USE_MONGODB or events_collection is None or not calendar_instance:
+        return False
+    try:
+        # Clear existing events
+        events_collection.delete_many({})
+        
+        # Save current events
+        for event in calendar_instance.events:
+            event_dict = {
+                'title': event.title,
+                'duration': event.duration,
+                'priority': event.priority.value,
+                'type': getattr(event, 'type', 'flexible'),
+                'scheduled_time': event.scheduled_time.isoformat() if event.scheduled_time else None,
+                'earliest_start': event.earliest_start.isoformat() if event.earliest_start else None,
+                'latest_start': event.latest_start.isoformat() if event.latest_start else None,
+                'fixed_time': event.fixed_time.isoformat() if event.fixed_time else None,
+                'description': getattr(event, 'description', None),
+                'location': getattr(event, 'location', None),
+                'day_of_week': getattr(event, 'day_of_week', None),
+                'is_scheduled': event.is_scheduled,
+                'created_at': datetime.utcnow()
+            }
+            events_collection.insert_one(event_dict)
+        
+        print(f"Saved {len(calendar_instance.events)} events to MongoDB")
+        return True
+    except Exception as e:
+        print(f"Error saving to MongoDB: {e}")
+        return False
+
+def load_events_from_mongo():
+    """Load events from MongoDB"""
+    if not USE_MONGODB or events_collection is None or not calendar_instance:
+        return False
+    try:
+        events_data = list(events_collection.find({}))
+        
+        for event_dict in events_data:
+            # Parse datetime strings back to datetime objects
+            earliest_start = None
+            latest_start = None
+            fixed_time = None
+            scheduled_time = None
+            
+            if event_dict.get('earliest_start'):
+                earliest_start = datetime.fromisoformat(event_dict['earliest_start'])
+            if event_dict.get('latest_start'):
+                latest_start = datetime.fromisoformat(event_dict['latest_start'])
+            if event_dict.get('fixed_time'):
+                fixed_time = datetime.fromisoformat(event_dict['fixed_time'])
+            if event_dict.get('scheduled_time'):
+                scheduled_time = datetime.fromisoformat(event_dict['scheduled_time'])
+            
+            # Create event object
+            event = Event(
+                title=event_dict['title'],
+                duration=event_dict['duration'],
+                priority=Priority(event_dict['priority']),
+                earliest_start=earliest_start,
+                latest_start=latest_start,
+                fixed_time=fixed_time,
+                event_type=event_dict.get('type', 'flexible'),
+                description=event_dict.get('description'),
+                location=event_dict.get('location'),
+                day_of_week=event_dict.get('day_of_week')
+            )
+            
+            # Set scheduled time if it exists
+            if scheduled_time:
+                event.scheduled_time = scheduled_time
+            
+            calendar_instance.events.append(event)
+        
+        print(f"Loaded {len(events_data)} events from MongoDB")
+        return True
+    except Exception as e:
+        print(f"Error loading from MongoDB: {e}")
+        return False
+
+def save_events_to_file():
+    """Save events to JSON file (fallback)"""
+    if not calendar_instance:
+        return False
     try:
         events_data = []
         for event in calendar_instance.events:
@@ -37,19 +136,23 @@ def save_events():
                 'location': getattr(event, 'location', None),
                 'day_of_week': getattr(event, 'day_of_week', None)
             })
+        
         with open(EVENTS_FILE, 'w') as f:
             json.dump(events_data, f)
-        print(f"Saved {len(events_data)} events")
+        print(f"Saved {len(events_data)} events to file")
+        return True
     except Exception as e:
-        print(f"Error saving: {e}")
+        print(f"Error saving to file: {e}")
+        return False
 
-def load_events():
-    """Load events from JSON file"""
+def load_events_from_file():
+    """Load events from JSON file (fallback)"""
     if not os.path.exists(EVENTS_FILE) or not calendar_instance:
-        return
+        return False
     try:
         with open(EVENTS_FILE, 'r') as f:
             events_data = json.load(f)
+        
         for data in events_data:
             event = Event(
                 title=data['title'],
@@ -66,9 +169,26 @@ def load_events():
             if data.get('scheduled_time'):
                 event.scheduled_time = datetime.fromisoformat(data['scheduled_time'])
             calendar_instance.events.append(event)
-        print(f"Loaded {len(events_data)} events")
+        
+        print(f"Loaded {len(events_data)} events from file")
+        return True
     except Exception as e:
-        print(f"Error loading: {e}")
+        print(f"Error loading from file: {e}")
+        return False
+
+def save_events():
+    """Save events using MongoDB if available, otherwise file"""
+    if USE_MONGODB:
+        return save_events_to_mongo()
+    else:
+        return save_events_to_file()
+
+def load_events():
+    """Load events using MongoDB if available, otherwise file"""
+    if USE_MONGODB:
+        return load_events_from_mongo()
+    else:
+        return load_events_from_file()
 
 def initialize_calendar():
     global calendar_instance, optimizer_instance
@@ -116,6 +236,7 @@ def add_event():
         initialize_calendar()
     
     data = request.json
+    print(f"Received event data: {data}")  # Debug log
     
     try:
         # Parse priority
@@ -127,6 +248,8 @@ def add_event():
         description = data.get('description', None)
         location = data.get('location', None)
         day_of_week = data.get('dayOfWeek', None)
+        
+        print(f"Creating event with dayOfWeek: {day_of_week}")  # Debug log
         
         # Create event based on whether it's fixed time or flexible
         if 'fixedTime' in data and data['fixedTime']:
@@ -168,18 +291,21 @@ def add_event():
         
         if success:
             save_events()  # Save after adding
+            print(f"Event created successfully: {event.title}")  # Debug log
             return jsonify({
                 'success': True,
                 'message': 'Event added successfully',
                 'event': event_to_dict(event)
             })
         else:
+            print(f"Failed to add event to calendar: {event.title}")  # Debug log
             return jsonify({
                 'success': False,
                 'message': 'Event already exists'
             }), 400
     
     except Exception as e:
+        print(f"Error creating event: {str(e)}")  # Debug log
         return jsonify({
             'success': False,
             'message': f'Error adding event: {str(e)}'
@@ -320,110 +446,14 @@ def delete_event(event_id):
     except Exception as e:
         return jsonify({'success': False, 'message': f'Error deleting event: {str(e)}'}), 500
 
-@app.route('/chat', methods=['POST'])
-def chat_endpoint():
-    """Simple chatbot endpoint for natural language event creation"""
-    data = request.json
-    message = data.get('message', '').lower()
-    
-    try:
-        # Simple keyword-based parsing (you could integrate with more sophisticated NLP)
-        response = {
-            'reply': '',
-            'suggestedEvent': None,
-            'action': 'info'
-        }
-        
-        # Extract potential event information
-        suggested_event = parse_natural_language_simple(message)
-        
-        if suggested_event:
-            response['reply'] = f"I understand you want to add: \"{suggested_event['title']}\"\nDuration: {suggested_event['duration']} minutes\nShall I add this to your calendar?"
-            response['suggestedEvent'] = suggested_event
-            response['action'] = 'create_event'
-        else:
-            response['reply'] = "I'd be happy to help you add events! Try saying something like:\n- 'I need to study math for 2 hours'\n- 'Schedule a meeting with John at 3 PM tomorrow'\n- 'Add my chemistry class every Monday at 9 AM'"
-            response['action'] = 'info'
-        
-        return jsonify(response)
-    
-    except Exception as e:
-        return jsonify({
-            'reply': f'Sorry, I had trouble understanding that. Could you try rephrasing?',
-            'action': 'info'
-        })
-
-def parse_natural_language_simple(message):
-    """Simple natural language parsing for events"""
-    import re
-    
-    # Extract duration
-    duration_match = re.search(r'(\d+)\s*(hours?|hrs?|h|minutes?|mins?|m)', message)
-    duration = 60  # default
-    
-    if duration_match:
-        value = int(duration_match.group(1))
-        unit = duration_match.group(2).lower()
-        if unit.startswith('h'):
-            duration = value * 60
-        else:
-            duration = value
-    
-    # Extract title/subject
-    title = "Study Session"  # default
-    
-    subjects = ['math', 'science', 'english', 'history', 'chemistry', 'physics', 'programming', 'coding']
-    activities = ['study', 'meeting', 'class', 'lecture', 'review', 'practice', 'workout', 'exercise']
-    
-    found_subject = None
-    found_activity = None
-    
-    for subject in subjects:
-        if subject in message:
-            found_subject = subject.capitalize()
-            break
-    
-    for activity in activities:
-        if activity in message:
-            found_activity = activity.capitalize()
-            break
-    
-    if found_activity and found_subject:
-        title = f"{found_activity} {found_subject}"
-    elif found_subject:
-        title = f"Study {found_subject}"
-    elif found_activity:
-        title = found_activity
-    
-    # Determine priority
-    priority = 2  # medium default
-    if any(word in message for word in ['urgent', 'important', 'asap', 'critical']):
-        priority = 3
-    elif any(word in message for word in ['low', 'optional', 'maybe']):
-        priority = 1
-    
-    # Determine type
-    event_type = 'flexible'
-    if any(word in message for word in ['class', 'lecture', 'mandatory', 'must']):
-        event_type = 'mandatory'
-    elif any(word in message for word in ['at', 'pm', 'am', ':']):
-        event_type = 'fixed'
-    
-    return {
-        'title': title,
-        'duration': duration,
-        'priority': priority,
-        'type': event_type
-    }
-
 @app.route('/health', methods=['GET'])
 def health_check():
     return jsonify({
         'status': 'healthy',
         'calendar_initialized': calendar_instance is not None,
         'event_count': len(calendar_instance.events) if calendar_instance else 0,
-        'persistence': 'File-based',
-        'events_file_exists': os.path.exists(EVENTS_FILE)
+        'persistence_type': 'MongoDB Atlas' if USE_MONGODB else 'File-based',
+        'mongodb_connected': USE_MONGODB
     })
 
 @app.errorhandler(404)
@@ -443,19 +473,10 @@ def internal_error(error):
 if __name__ == '__main__':
     initialize_calendar()
     print("Calendar AI Optimizer API starting...")
+    persistence_type = "MongoDB Atlas" if USE_MONGODB else "File-based"
+    print(f"Using {persistence_type} persistence")
     print("Calendar initialized for today (8 AM - 6 PM)")
     print("Frontend available at: http://localhost:5000/")
     print("API endpoints available at: http://localhost:5000/")
-    
-    # Serve static files (HTML, CSS, JS) from the same directory
-    from flask import send_from_directory
-    
-    @app.route('/')
-    def serve_index():
-        return send_from_directory('.', 'index.html')
-    
-    @app.route('/app.js')
-    def serve_js():
-        return send_from_directory('.', 'app.js')
     
     app.run(debug=True, host='0.0.0.0', port=5000)

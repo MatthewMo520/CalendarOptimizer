@@ -18,7 +18,8 @@ class Event:
         fixed_time: Optional[datetime] = None,
         event_type: str = 'flexible',  # 'flexible', 'fixed', 'mandatory'
         description: Optional[str] = None,
-        location: Optional[str] = None
+        location: Optional[str] = None,
+        day_of_week: Optional[int] = None  # 0=Sunday, 1=Monday, etc.
     ):
         self.title = title
         self.duration = duration
@@ -27,6 +28,7 @@ class Event:
         self.type = event_type
         self.description = description
         self.location = location
+        self.day_of_week = day_of_week
         
         if fixed_time:
             self.earliest_start = fixed_time

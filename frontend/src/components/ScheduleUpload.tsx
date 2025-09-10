@@ -324,22 +324,22 @@ Be methodical: examine each colored block one by one, see which day column(s) it
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <div className="bg-white border border-gray-200 p-6">
       <div className="flex items-center gap-3 mb-6">
-        <div className="p-2.5 bg-indigo-600 rounded-lg shadow-sm">
-          <Image className="w-5 h-5 text-white" />
+        <div className="p-2 bg-gray-900 border border-gray-800">
+          <Image className="w-4 h-4 text-white" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Schedule Import</h2>
-          <p className="text-sm text-gray-600">Upload class schedule image for AI parsing</p>
+          <h2 className="text-base font-medium text-gray-900">Import Schedule</h2>
+          <p className="text-sm text-gray-600">Upload schedule image for parsing</p>
         </div>
       </div>
 
       {uploadStatus === 'idle' && (
         <div
-          className={`border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 ${
+          className={`border-2 border-dashed p-8 text-center transition-colors ${
             isDragOver 
-              ? 'border-blue-400 bg-blue-50' 
+              ? 'border-gray-900 bg-gray-50' 
               : 'border-gray-300 hover:border-gray-400'
           }`}
           onDragOver={(e) => {
@@ -350,7 +350,7 @@ Be methodical: examine each colored block one by one, see which day column(s) it
           onDrop={handleDrop}
         >
           <div className="flex flex-col items-center gap-4">
-            <Upload className={`w-12 h-12 ${isDragOver ? 'text-blue-500' : 'text-gray-400'}`} />
+            <Upload className={`w-10 h-10 ${isDragOver ? 'text-gray-900' : 'text-gray-400'}`} />
             <div>
               <p className="text-lg font-medium text-gray-900 mb-1">
                 Drop your schedule image here
@@ -358,9 +358,9 @@ Be methodical: examine each colored block one by one, see which day column(s) it
               <p className="text-sm text-gray-500 mb-4">
                 Supports JPG, PNG, PDF screenshots of schedules
               </p>
-              <label className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 cursor-pointer transition-colors font-medium shadow-sm">
+              <label className="inline-flex items-center gap-2 px-4 py-3 bg-gray-900 text-white hover:bg-gray-800 cursor-pointer transition-colors font-medium border border-gray-900">
                 <Upload className="w-4 h-4" />
-                Select Schedule Image
+                Select Image
                 <input
                   type="file"
                   className="hidden"
@@ -375,17 +375,17 @@ Be methodical: examine each colored block one by one, see which day column(s) it
 
       {uploadStatus === 'processing' && (
         <div className="text-center py-8">
-          <Loader className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Processing Image...</h3>
+          <Loader className="w-6 h-6 text-gray-600 animate-spin mx-auto mb-4" />
+          <h3 className="text-base font-medium text-gray-900 mb-2">Processing Image...</h3>
           <p className="text-sm text-gray-600">Extracting schedule information</p>
         </div>
       )}
 
       {uploadStatus === 'success' && extractedEvents.length > 0 && (
         <div className="space-y-4">
-          <div className="flex items-center gap-2 text-green-600 mb-4">
-            <CheckCircle2 className="w-5 h-5" />
-            <span className="font-medium">{extractedEvents.length} classes imported successfully</span>
+          <div className="flex items-center gap-2 text-gray-900 mb-4">
+            <CheckCircle2 className="w-4 h-4" />
+            <span className="font-medium">{extractedEvents.length} classes imported</span>
           </div>
 
           {selectedImage && (
@@ -402,7 +402,7 @@ Be methodical: examine each colored block one by one, see which day column(s) it
             <h4 className="font-medium text-gray-900">Extracted Events:</h4>
             <div className="max-h-48 overflow-y-auto space-y-2">
               {extractedEvents.map((event, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200">
                   <div className="flex-1">
                     <div className="font-medium text-gray-900">{event.title}</div>
                     <div className="text-sm text-gray-600">
@@ -411,8 +411,8 @@ Be methodical: examine each colored block one by one, see which day column(s) it
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-700">
-                      Priority 1
+                    <span className="px-2 py-1 text-xs bg-gray-200 text-gray-700 border border-gray-300">
+                      High Priority
                     </span>
                   </div>
                 </div>
@@ -423,9 +423,9 @@ Be methodical: examine each colored block one by one, see which day column(s) it
           <div className="flex gap-2">
             <button
               onClick={resetUpload}
-              className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-sm"
+              className="px-4 py-2 bg-gray-900 text-white hover:bg-gray-800 transition-colors font-medium border border-gray-900"
             >
-              Import Another Schedule
+              Import Another
             </button>
           </div>
         </div>
@@ -433,12 +433,12 @@ Be methodical: examine each colored block one by one, see which day column(s) it
 
       {uploadStatus === 'error' && (
         <div className="text-center py-6">
-          <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Import Failed</h3>
+          <AlertCircle className="w-6 h-6 text-red-600 mx-auto mb-4" />
+          <h3 className="text-base font-medium text-gray-900 mb-2">Import Failed</h3>
           <p className="text-sm text-red-600 mb-4">{errorMessage}</p>
           <button
             onClick={resetUpload}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            className="px-4 py-2 bg-white text-gray-900 hover:bg-gray-50 transition-colors border border-gray-300"
           >
             Try Again
           </button>

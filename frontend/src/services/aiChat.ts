@@ -76,6 +76,9 @@ class AIChatService {
       const data = await response.json();
       const aiMessage = data.candidates?.[0]?.content?.parts?.[0]?.text || 'I had trouble processing that.';
       
+      // Debug: Log the raw AI response
+      console.log('🤖 RAW AI RESPONSE:', aiMessage);
+      
       // Parse the AI response for calendar events
       const parsedResponse = this.parseAIResponse(aiMessage, message);
       
@@ -171,13 +174,18 @@ For general chat, just respond normally and conversationally. Be helpful, friend
   }
 
   private parseAIResponse(aiResponse: string, originalMessage: string): AIResponse {
-    // Check for multiple events first
-    const multipleEventsMatch = aiResponse.match(/MULTIPLE_EVENTS_DETECTED:\s*(\[[\s\S]*?\])/);
+    console.log('🔍 PARSING AI RESPONSE for message:', originalMessage);
+    console.log('🔍 Looking for MULTIPLE_EVENTS_DETECTED in:', aiResponse);
+    
+    // Check for multiple events first (be flexible with whitespace and formatting)
+    const multipleEventsMatch = aiResponse.match(/MULTIPLE_EVENTS_DETECTED\s*:?\s*(\[[\s\S]*?\])/i);
     
     if (multipleEventsMatch) {
+      console.log('✅ FOUND MULTIPLE_EVENTS_DETECTED:', multipleEventsMatch[1]);
       try {
         const eventsData = JSON.parse(multipleEventsMatch[1]);
-        const cleanMessage = aiResponse.replace(/MULTIPLE_EVENTS_DETECTED:[\s\S]*?\]/, '').trim();
+        console.log('✅ PARSED EVENTS DATA:', eventsData);
+        const cleanMessage = aiResponse.replace(/MULTIPLE_EVENTS_DETECTED\s*:?\s*\[[\s\S]*?\]/i, '').trim();
         
         return {
           message: cleanMessage || `I've created ${eventsData.length} events for your request!`,
@@ -190,12 +198,14 @@ For general chat, just respond normally and conversationally. Be helpful, friend
           action: 'create_multiple_events',
         };
       } catch (e) {
-        console.error('Failed to parse multiple events JSON:', e);
+        console.error('❌ Failed to parse multiple events JSON:', e);
       }
+    } else {
+      console.log('❌ NO MULTIPLE_EVENTS_DETECTED found');
     }
     
     // Check if AI detected a single event
-    const eventMatch = aiResponse.match(/EVENT_DETECTED:\s*({[\s\S]*?})/);
+    const eventMatch = aiResponse.match(/EVENT_DETECTED\s*:?\s*({[\s\S]*?})/i);
     
     if (eventMatch) {
       try {

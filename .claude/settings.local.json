@@ -7,7 +7,9 @@
       "Bash(curl:*)",
       "Bash(npx kill-port:*)",
       "Bash(npm start)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(taskkill:*)",
+      "Bash(pip install:*)"
     ],
     "deny": [],
     "ask": []
