@@ -358,10 +358,10 @@ function AppContent() {
   }> = ({ id, icon, label }) => (
     <button
       onClick={() => setActiveTab(id)}
-      className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-colors font-medium ${
+      className={`flex items-center gap-2 px-4 py-2 transition-colors font-medium border-b-2 ${
         activeTab === id
-          ? 'bg-indigo-600 text-white shadow-sm'
-          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-700'
+          ? 'text-gray-900 border-gray-900'
+          : 'text-gray-600 hover:text-gray-900 border-transparent hover:border-gray-300'
       }`}
     >
       {icon}
@@ -372,29 +372,29 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+      <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-indigo-600 rounded-lg shadow-sm">
-                <Calendar className="w-7 h-7 text-white" />
+              <div className="p-2 bg-gray-900 border border-gray-800">
+                <Calendar className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Academic Scheduler</h1>
-                <p className="text-sm text-gray-600">Smart course schedule management</p>
+                <h1 className="text-xl font-semibold text-gray-900">Calendar Optimizer</h1>
+                <p className="text-sm text-gray-600">Schedule management system</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               {/* API Status Indicator */}
               <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${
-                  apiStatus === 'connected' ? 'bg-green-500' : 
-                  apiStatus === 'disconnected' ? 'bg-red-500' : 'bg-yellow-500'
+                <div className={`w-2 h-2 ${
+                  apiStatus === 'connected' ? 'bg-green-600' : 
+                  apiStatus === 'disconnected' ? 'bg-red-600' : 'bg-yellow-600'
                 }`}></div>
                 <span className="text-sm text-gray-600 hidden sm:block">
-                  {apiStatus === 'connected' ? 'Connected' : 
-                   apiStatus === 'disconnected' ? 'Offline Mode' : 'Connecting...'}
+                  {apiStatus === 'connected' ? 'Online' : 
+                   apiStatus === 'disconnected' ? 'Offline' : 'Connecting'}
                 </span>
               </div>
 
@@ -402,16 +402,16 @@ function AppContent() {
               <button
                 onClick={handleOptimizeSchedule}
                 disabled={isLoading || events.length === 0}
-                className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 font-medium shadow-sm"
+                className="px-4 py-2 bg-gray-900 text-white hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2 font-medium border border-gray-900"
               >
                 <BarChart3 className="w-4 h-4" />
-                <span className="hidden sm:block">Optimize Schedule</span>
+                <span className="hidden sm:block">Optimize</span>
               </button>
               
               <button
                 onClick={handleClearSchedule}
                 disabled={isLoading || events.length === 0}
-                className="px-5 py-2.5 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium shadow-sm"
+                className="px-4 py-2 bg-white text-gray-700 hover:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors font-medium border border-gray-300"
               >
                 <span className="hidden sm:block">Clear All</span>
                 <span className="sm:hidden">Clear</span>
@@ -420,10 +420,10 @@ function AppContent() {
           </div>
 
           {/* Navigation Tabs */}
-          <div className="flex items-center gap-2 pb-4">
+          <div className="flex items-center gap-6 mt-4">
             <TabButton id="calendar" icon={<Calendar className="w-4 h-4" />} label="Calendar" />
             <TabButton id="events" icon={<Clock className="w-4 h-4" />} label="Events" />
-            <TabButton id="analytics" icon={<BarChart3 className="w-4 h-4" />} label="Analytics" />
+            <TabButton id="analytics" icon={<BarChart3 className="w-4 h-4" />} label="Reports" />
           </div>
         </div>
       </header>
@@ -433,10 +433,10 @@ function AppContent() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Sidebar - Event Form and Schedule Upload */}
           <div className="lg:col-span-1 space-y-6">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Clock className="w-5 h-5 text-indigo-600" />
-                Add New Event
+            <div className="bg-white border border-gray-200 p-6">
+              <h2 className="text-base font-medium text-gray-900 mb-4 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-gray-600" />
+                Add Event
               </h2>
               <EventForm onEventCreate={handleEventCreate} isLoading={isLoading} />
             </div>
@@ -519,6 +519,7 @@ function AppContent() {
       {/* Chatbot */}
       <ChatBot 
         onEventCreate={handleEventCreate}
+        onMultipleEventsCreate={handleBatchEventCreate}
         currentEvents={events}
       />
 

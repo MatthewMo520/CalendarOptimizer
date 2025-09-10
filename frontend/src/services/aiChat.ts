@@ -4,7 +4,8 @@ interface AIResponse {
   message: string;
   hasEvent?: boolean;
   event?: Partial<Event>;
-  action?: 'create_event' | 'chat' | 'help';
+  events?: Partial<Event>[];
+  action?: 'create_event' | 'create_multiple_events' | 'chat' | 'help';
 }
 
 class AIChatService {
@@ -34,7 +35,7 @@ class AIChatService {
     localStorage.setItem('gemini_api_key', key);
   }
 
-  async chat(message: string, currentEvents: Event[] = []): Promise<AIResponse> {
+  async chat(message: string, currentEvents: Event[] = [], conversationHistory: Array<{role: string, content: string}> = []): Promise<AIResponse> {
     // Fallback to rule-based system if no API key
     if (!this.apiKey) {
       return this.fallbackResponse(message, currentEvents);
@@ -42,7 +43,13 @@ class AIChatService {
 
     try {
       const systemPrompt = this.buildSystemPrompt(currentEvents);
-      const fullPrompt = `${systemPrompt}\n\nUser: ${message}`;
+      
+      // Build conversation context
+      let conversationContext = systemPrompt + '\n\n';
+      conversationHistory.forEach(msg => {
+        conversationContext += `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}\n`;
+      });
+      conversationContext += `User: ${message}`;
       
       const response = await fetch(`${this.baseUrl}/gemini-1.5-flash:generateContent?key=${this.apiKey}`, {
         method: 'POST',
@@ -52,7 +59,7 @@ class AIChatService {
         body: JSON.stringify({
           contents: [{
             parts: [{
-              text: fullPrompt
+              text: conversationContext
             }]
           }],
           generationConfig: {
@@ -105,16 +112,38 @@ IMPORTANT: When users specify days of the week (Monday, Tuesday, Wednesday, etc.
 - Calculate the correct date for the requested day
 - Don't default everything to "today"
 
-When a user wants to create a calendar event, respond in this EXACT format:
+CRITICAL: For requests like "everyday", "daily", "every weekday", create MULTIPLE events:
+- "everyday" = 7 events (one for each day of the week)
+- "every weekday" = 5 events (Monday through Friday)
+- "every Monday and Wednesday" = 2 events
+
+When a user wants to create calendar event(s), respond in this EXACT format:
+
+For SINGLE event:
 EVENT_DETECTED: {
   "title": "Event Name",
   "duration": 60,
   "priority": 2,
-  "type": "flexible",
-  "description": "Optional description",
-  "fixedTime": "2:00 PM",
-  "dayOfWeek": 3
+  "type": "flexible"
 }
+
+For MULTIPLE events (everyday/daily requests):
+MULTIPLE_EVENTS_DETECTED: [
+  {
+    "title": "Event Name (Monday)",
+    "duration": 60,
+    "priority": 2,
+    "type": "flexible",
+    "dayOfWeek": 1
+  },
+  {
+    "title": "Event Name (Tuesday)",
+    "duration": 60,
+    "priority": 2,
+    "type": "flexible",
+    "dayOfWeek": 2
+  }
+]
 
 CRITICAL RULES FOR DATES:
 - If user says "Wednesday", "next Wednesday", or "this Wednesday": set "dayOfWeek": 3
@@ -128,18 +157,44 @@ CRITICAL RULES FOR DATES:
 - dayOfWeek: 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
 
 EXAMPLES:
-- "Schedule meeting Wednesday at 2 PM" → dayOfWeek: 3, fixedTime: "2:00 PM"
+- "Schedule meeting Wednesday at 2 PM" → dayOfWeek: 3, fixedTime: "2:00 PM" 
 - "Add study session Thursday morning" → dayOfWeek: 4, fixedTime: "9:00 AM"
-- "Meeting tomorrow" → use scheduledTime instead of dayOfWeek
+- "1 hour of leetcode everyday" → MULTIPLE_EVENTS_DETECTED with 7 events
+- "Add flexible study time daily" → MULTIPLE_EVENTS_DETECTED with 7 events
 
 Priority levels: 1=High, 2=Medium, 3=Low
 Types: "flexible", "fixed", "mandatory"
+
+IMPORTANT: Always respond with either EVENT_DETECTED: or MULTIPLE_EVENTS_DETECTED: followed by valid JSON. Never respond without one of these formats when creating events.
 
 For general chat, just respond normally and conversationally. Be helpful, friendly, and engaging!`;
   }
 
   private parseAIResponse(aiResponse: string, originalMessage: string): AIResponse {
-    // Check if AI detected an event
+    // Check for multiple events first
+    const multipleEventsMatch = aiResponse.match(/MULTIPLE_EVENTS_DETECTED:\s*(\[[\s\S]*?\])/);
+    
+    if (multipleEventsMatch) {
+      try {
+        const eventsData = JSON.parse(multipleEventsMatch[1]);
+        const cleanMessage = aiResponse.replace(/MULTIPLE_EVENTS_DETECTED:[\s\S]*?\]/, '').trim();
+        
+        return {
+          message: cleanMessage || `I've created ${eventsData.length} events for your request!`,
+          hasEvent: true,
+          events: eventsData.map((eventData: any, index: number) => ({
+            id: (Date.now() + index).toString(),
+            ...eventData,
+            isScheduled: false,
+          })),
+          action: 'create_multiple_events',
+        };
+      } catch (e) {
+        console.error('Failed to parse multiple events JSON:', e);
+      }
+    }
+    
+    // Check if AI detected a single event
     const eventMatch = aiResponse.match(/EVENT_DETECTED:\s*({[\s\S]*?})/);
     
     if (eventMatch) {

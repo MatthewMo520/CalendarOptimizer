@@ -125,19 +125,19 @@ const EventForm: React.FC<EventFormProps> = ({ onEventCreate, isLoading }) => {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case '3': return 'text-red-600 bg-red-50 border-red-200';
-      case '2': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      case '1': return 'text-green-600 bg-green-50 border-green-200';
-      default: return 'text-gray-600 bg-gray-50 border-gray-200';
+      case '3': return 'text-gray-900 bg-white border-gray-300';
+      case '2': return 'text-gray-900 bg-white border-gray-300';
+      case '1': return 'text-gray-900 bg-white border-gray-300';
+      default: return 'text-gray-900 bg-white border-gray-300';
     }
   };
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'mandatory': return 'text-red-600 bg-red-50 border-red-200';
-      case 'fixed': return 'text-blue-600 bg-blue-50 border-blue-200';
-      case 'flexible': return 'text-green-600 bg-green-50 border-green-200';
-      default: return 'text-gray-600 bg-gray-50 border-gray-200';
+      case 'mandatory': return 'text-gray-900 bg-white border-gray-300';
+      case 'fixed': return 'text-gray-900 bg-white border-gray-300';
+      case 'flexible': return 'text-gray-900 bg-white border-gray-300';
+      default: return 'text-gray-900 bg-white border-gray-300';
     }
   };
 
@@ -153,8 +153,8 @@ const EventForm: React.FC<EventFormProps> = ({ onEventCreate, isLoading }) => {
           value={formData.title}
           onChange={(e) => handleInputChange('title', e.target.value)}
           placeholder="e.g., Study Math, Team Meeting"
-          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-            errors.title ? 'border-red-300' : 'border-gray-300'
+          className={`w-full px-3 py-2 border focus:outline-none focus:border-gray-900 transition-colors ${
+            errors.title ? 'border-red-500' : 'border-gray-300'
           }`}
         />
         {errors.title && (
@@ -177,8 +177,8 @@ const EventForm: React.FC<EventFormProps> = ({ onEventCreate, isLoading }) => {
             step="15"
             value={formData.duration}
             onChange={(e) => handleInputChange('duration', e.target.value)}
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-              errors.duration ? 'border-red-300' : 'border-gray-300'
+            className={`w-full px-3 py-2 border focus:outline-none focus:border-gray-900 transition-colors ${
+              errors.duration ? 'border-red-500' : 'border-gray-300'
             }`}
           />
           {errors.duration && (
@@ -193,7 +193,7 @@ const EventForm: React.FC<EventFormProps> = ({ onEventCreate, isLoading }) => {
           <select
             value={formData.priority}
             onChange={(e) => handleInputChange('priority', e.target.value)}
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${getPriorityColor(formData.priority)}`}
+            className={`w-full px-3 py-2 border focus:outline-none focus:border-gray-900 transition-colors ${getPriorityColor(formData.priority)}`}
           >
             <option value="1">Low</option>
             <option value="2">Medium</option>
@@ -210,7 +210,7 @@ const EventForm: React.FC<EventFormProps> = ({ onEventCreate, isLoading }) => {
         <select
           value={formData.type}
           onChange={(e) => handleInputChange('type', e.target.value as any)}
-          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${getTypeColor(formData.type)}`}
+          className={`w-full px-3 py-2 border focus:outline-none focus:border-gray-900 transition-colors ${getTypeColor(formData.type)}`}
         >
           <option value="flexible">Flexible - Can be rescheduled</option>
           <option value="fixed">Fixed - Specific time required</option>
@@ -229,8 +229,8 @@ const EventForm: React.FC<EventFormProps> = ({ onEventCreate, isLoading }) => {
             type="datetime-local"
             value={formData.fixedTime}
             onChange={(e) => handleInputChange('fixedTime', e.target.value)}
-            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-              errors.fixedTime ? 'border-red-300' : 'border-gray-300'
+            className={`w-full px-3 py-2 border focus:outline-none focus:border-gray-900 transition-colors ${
+              errors.fixedTime ? 'border-red-500' : 'border-gray-300'
             }`}
           />
           {errors.fixedTime && (
@@ -255,7 +255,7 @@ const EventForm: React.FC<EventFormProps> = ({ onEventCreate, isLoading }) => {
                 type="datetime-local"
                 value={formData.earliestStart}
                 onChange={(e) => handleInputChange('earliestStart', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm"
+                className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-gray-900 transition-colors text-sm"
               />
             </div>
             <div>
@@ -264,8 +264,8 @@ const EventForm: React.FC<EventFormProps> = ({ onEventCreate, isLoading }) => {
                 type="datetime-local"
                 value={formData.latestStart}
                 onChange={(e) => handleInputChange('latestStart', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-sm ${
-                  errors.latestStart ? 'border-red-300' : 'border-gray-300'
+                className={`w-full px-3 py-2 border focus:outline-none focus:border-gray-900 transition-colors text-sm ${
+                  errors.latestStart ? 'border-red-500' : 'border-gray-300'
                 }`}
               />
               {errors.latestStart && (
@@ -286,7 +286,7 @@ const EventForm: React.FC<EventFormProps> = ({ onEventCreate, isLoading }) => {
           onChange={(e) => handleInputChange('description', e.target.value)}
           placeholder="Additional notes or details..."
           rows={2}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
+          className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-gray-900 transition-colors resize-none"
         />
       </div>
 
@@ -300,7 +300,7 @@ const EventForm: React.FC<EventFormProps> = ({ onEventCreate, isLoading }) => {
           value={formData.location}
           onChange={(e) => handleInputChange('location', e.target.value)}
           placeholder="e.g., Conference Room A, Online, Library"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+          className="w-full px-3 py-2 border border-gray-300 focus:outline-none focus:border-gray-900 transition-colors"
         />
       </div>
 
@@ -308,11 +308,11 @@ const EventForm: React.FC<EventFormProps> = ({ onEventCreate, isLoading }) => {
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-lg hover:from-blue-700 hover:to-purple-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-900 text-white font-medium hover:bg-gray-800 focus:outline-none disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors border border-gray-900"
       >
         {isLoading ? (
           <>
-            <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+            <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent"></div>
             Adding Event...
           </>
         ) : (
