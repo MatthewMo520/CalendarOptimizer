@@ -222,113 +222,34 @@ const ScheduleUpload: React.FC<ScheduleUploadProps> = ({ onEventsExtracted }) =>
         contents: [{
           parts: [
             {
-              text: `Analyze this university class schedule image with EXTREME PRECISION. This is a weekly grid with 7 columns (Monday through Sunday).
+              text: `Look at this class schedule image very carefully. 
 
-CRITICAL STEP-BY-STEP ANALYSIS:
-1. Identify the column headers: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
-2. For EACH class block, determine EXACTLY which columns it spans across
-3. Count the physical column positions, not just read text
+First, identify the column headers (days of the week) at the top.
+Then, for each colored class block, tell me exactly which day columns it spans across.
 
-ANALYSIS METHOD:
-- Look at the LEFT EDGE of each class block - which column does it start in?
-- Look at the RIGHT EDGE of each class block - which column does it end in?
-- A class that spans Monday+Wednesday+Friday columns = "MWF"
-- A class that spans Tuesday+Thursday columns = "TTH" 
-- A class in only Monday column = "Monday"
-- A class in only Wednesday column = "Wednesday"
+For example:
+- If you see a block that spans across the "Tuesday" and "Thursday" columns, that's "TTH"
+- If you see a block that spans across "Monday", "Wednesday", and "Friday" columns, that's "MWF"
+- If you see a block in only the "Wednesday" column, that's "Wednesday"
 
-EXPECTED PATTERNS FROM YOUR IMAGE:
-- ECON 102: Should appear in Tuesday AND Thursday columns → "TTH"
-- CS 245: Should appear in Tuesday AND Thursday columns → "TTH"
-- MATH 235: Should appear in Monday AND Wednesday AND Friday columns → "MWF"
-- STAT 230: Should appear in Monday AND Wednesday AND Friday columns → "MWF"
+Look at each class block individually and determine its day pattern based on which columns it occupies.
 
-IMPORTANT: Also extract ALL TUTORIALS (TUT):
-- CS 246 - 104 TUT: Tuesday column → "Tuesday"
-- STAT 230 - 102 TUT: Friday column → "Friday"  
-- CS 245 - 105 TUT: Friday column → "Friday"
-- MATH 235 - 101 TUT: Thursday column → "Thursday"
-- Any other TUT sessions visible in single day columns
-
-Return ONLY valid JSON in this format (INCLUDE ALL LECTURES AND TUTORIALS):
+Extract all classes and tutorials. Return only this JSON format:
 {
   "events": [
     {
-      "title": "ECON 102 - 001",
-      "time": "8:30 AM",
-      "day": "TTH",
-      "location": "M3 1006",
-      "duration": 80,
-      "type": "mandatory",
-      "priority": 1
-    },
-    {
-      "title": "CS 245 - 002", 
-      "time": "10:00 AM",
-      "day": "TTH",
-      "location": "MC 4045",
-      "duration": 80,
-      "type": "mandatory", 
-      "priority": 1
-    },
-    {
-      "title": "CS 246 - 104 TUT",
-      "time": "11:30 AM",
-      "day": "Tuesday",
-      "location": "MC 3003",
-      "duration": 50,
-      "type": "mandatory",
-      "priority": 1
-    },
-    {
-      "title": "STAT 230 - 102 TUT",
-      "time": "12:30 PM",
-      "day": "Friday",
-      "location": "DC 1351",
-      "duration": 50,
-      "type": "mandatory",
-      "priority": 1
-    },
-    {
-      "title": "CS 245 - 105 TUT",
-      "time": "1:30 PM",
-      "day": "Friday",
-      "location": "MC 4042",
-      "duration": 50,
-      "type": "mandatory",
-      "priority": 1
-    },
-    {
-      "title": "MATH 235 - 101 TUT",
-      "time": "2:30 PM",
-      "day": "Thursday",
-      "location": "UTD 105",
-      "duration": 50,
-      "type": "mandatory",
-      "priority": 1
-    },
-    {
-      "title": "MATH 235 - 001",
-      "time": "3:30 PM", 
-      "day": "MWF",
-      "location": "MC 4059",
-      "duration": 50,
-      "type": "mandatory",
-      "priority": 1
-    },
-    {
-      "title": "STAT 230 - 002",
-      "time": "2:30 PM",
-      "day": "MWF", 
-      "location": "DC 1351",
-      "duration": 50,
+      "title": "Course Name - Section", 
+      "time": "Start time from block",
+      "day": "Which day columns the block spans",
+      "location": "Room from block if visible",
+      "duration": "Minutes between start and end time",
       "type": "mandatory",
       "priority": 1
     }
   ]
 }
 
-VERIFICATION: Double-check that ECON and CS245 are "TTH", MATH and STAT are "MWF" based on their column positions.`
+Be methodical: examine each colored block one by one, see which day column(s) it occupies, and extract that information accurately.`
             },
             {
               inline_data: {
